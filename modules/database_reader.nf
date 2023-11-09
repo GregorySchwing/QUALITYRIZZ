@@ -24,6 +24,7 @@ process depickle {
     print(f"Python Version: {sys.version}")
     # Use the pandas read_pickle function to read the DataFrame.
     df = pd.read_pickle("$pathToDatabase")
+    #print(df['mobley_5708811'])
 
     # Write the dictionary to the file in JSON format
     counter = 0
@@ -44,7 +45,7 @@ workflow extract_database{
     take:
     database_pickle_ch
     main:
-    depickle(database_pickle_ch)
+    depickle(database_pickle_ch) 
     emit:
     json = depickle.out.json
 

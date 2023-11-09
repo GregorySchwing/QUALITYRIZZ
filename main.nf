@@ -10,6 +10,7 @@ include { validate_manifest } from './modules/manifest'
 include { quality_wf } from './modules/quality'
 include { align_wf } from './modules/align'
 include { extract_database } from './modules/database_reader'
+include { build_ligands } from './modules/system_builder'
 
 
 // Function which prints help message text
@@ -75,27 +76,11 @@ def myString = """
 log.info """\
          ${myString}
 =============================================================================
-         outdir       : ${params.output_dir}
+         output_dir          : ${params.output_dir}
+         database            : ${params.database}
+
          """
          .stripIndent()
-
-
-    // The user should specify --fastq_folder OR --manifest, but not both
-    if ( params.fastq_folder && params.manifest ){
-        log.info"""
-        User may specify --fastq_folder OR --manifest, but not both
-        """.stripIndent()
-        // Exit out and do not run anything else
-        exit 1
-    }
-    if ( ! params.fastq_folder && ! params.manifest ){
-        log.info"""
-        User must specify --fastq_folder or --manifest.
-        Run with --help for more details.
-        """.stripIndent()
-        // Exit out and do not run anything else
-        exit 1
-    }
 
     if ( params.database ){
 
@@ -106,17 +91,15 @@ log.info """\
             pathToDataBase = "$projectDir/databases/FreeSolv/database.pickle"
         }
 
+
         database = Channel
             .fromPath( pathToDataBase )
 
         extract_database(
             database
         )
-        //println(extract_database.out.json)
-        extract_database.out.json.view()
-
-        molecules = Channel.fromPath( '${params.output_folder}/FreeSolv/json/*.json' )
-        molecules.view()
+        nc = extract_database.out.json.flatten()
+        build_ligands(nc)
     }
     if (false){
         // If the --fastq_folder input option was provided
