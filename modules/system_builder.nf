@@ -203,6 +203,7 @@ workflow build_solvents {
     main:
     // Process each JSON file asynchronously
     get_conc_dieps(solv_temp_pairs)
-    get_conc_dieps.out.script.view()
     build_solvent(get_conc_dieps.out.script)
+    emit:
+    xvv = build_solvent.out.flatten().filter { file -> file.name.endsWith("xvv") }
 }

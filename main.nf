@@ -107,6 +107,7 @@ log.info """\
         build_ligands.out.crd.view()
         solvent = Channel.from( [["cSPCE","298.15"]] )
         build_solvents(solvent)
+        build_solvents.out.xvv.view()
     }
     if (false){
         // If the --fastq_folder input option was provided
