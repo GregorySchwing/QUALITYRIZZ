@@ -65,14 +65,14 @@ process build_ligand {
 
 process get_conc_dieps {
     container "${params.container__openff_toolkit}"
-    publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
+    //publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
 
     debug true
     input:
     tuple val(model), val(T)
     output:
     path('solvParams.json'), emit: json
-    path('solv_susc.sh'), emit: script
+    tuple val(model), val(T), path('solv_susc.sh'), emit: script
     script:
     
     """
@@ -169,33 +169,17 @@ process get_conc_dieps {
 
 process build_solvent {
     container "${params.container__biobb_amber}"
-    //publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
+    publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
 
     debug true
     input:
-    tuple val(model), val(T), path('solvParams.json')
-
+    tuple val(model), val(T), path('solv_susc.sh')
+    output:
+    path('${model}_${T}.inp')
     script:
     """
-    #!/usr/bin/env python
-    ## RISM-related globals ##
-
-    import json
-    # Open and read the JSON file
-    with open("solvParams.json", "r") as file:
-        print("reading 'solvParams.json'")
-        data = json.load(file)
-
-    T=${T}
-    smodel="${model}"
-    rism1d="DRISM"
-    closure="PSE3"
-    rism1d_name = '{smodel}_{temp}'.format(smodel=smodel,temp=T)
-    diel = data['diel']
-    conc = data['conc']
-
-    print(diel,conc)
-
+    echo '${model}_${T}'
+    bash solv_susc.sh
     """
     //template 'rism1d.sh'
 
@@ -219,5 +203,6 @@ workflow build_solvents {
     main:
     // Process each JSON file asynchronously
     get_conc_dieps(solv_temp_pairs)
-    //build_solvent(get_conc_dieps.out.json)
+    get_conc_dieps.out.script.view()
+    build_solvent(get_conc_dieps.out.script)
 }
