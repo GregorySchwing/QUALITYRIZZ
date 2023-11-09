@@ -65,14 +65,14 @@ process build_ligand {
 
 process get_conc_dieps {
     container "${params.container__openff_toolkit}"
-    //publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
+    publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
 
     debug true
     input:
     tuple val(model), val(T)
     output:
     path('solvParams.json'), emit: json
-    tuple val(model), val(T), path('solv_susc.sh'), emit: script
+    tuple val(model), val(T), path("solv_susc.sh"), emit: script
     script:
     
     """
@@ -147,8 +147,6 @@ process get_conc_dieps {
         MODEL="\$AMBERHOME/dat/rism1d/mdl/{smodel}.mdl"
     /
     EOF
-
-    rism1d {name1d} > {name1d}.out
     '''
     
     T=${T}
@@ -162,26 +160,28 @@ process get_conc_dieps {
                         smodel=smodel, rism1d=rism1d,\
                         closure=closure.upper(),\
                         name1d=rism1d_name)
-    with open('solv_susc.sh', "w") as text_file:
+    with open("solv_susc.sh", "w") as text_file:
         text_file.write(input_string)
     """
 }
 
 process build_solvent {
     container "${params.container__biobb_amber}"
-    publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
+    publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: false
 
     debug true
     input:
-    tuple val(model), val(T), path('solv_susc.sh')
+    tuple val(model), val(T), path("solv_susc.sh")
     output:
-    path('${model}_${T}.inp')
-    script:
+    path("${model}_${T}.*")
+    shell:
     """
+    # Some code in script1.sh
     echo '${model}_${T}'
-    bash solv_susc.sh
+    which rism1d
+    bash "solv_susc.sh"
+    rism1d "${model}_${T}" > "${model}_${T}.out"
     """
-    //template 'rism1d.sh'
 
 }
 
