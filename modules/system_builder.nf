@@ -3,14 +3,20 @@
 // Using DSL-2
 nextflow.enable.dsl=2
 
+process build_ligand {
+    container "${params.container__openff_toolkit}"
+    publishDir "${params.output_folder}/${params.database}/systems/${pathToJson.baseName}", mode: 'copy', overwrite: true
 
-process echoJsonFileName {
     debug true
     input:
-    path x
+    path pathToJson
+    output:
+    path "${pathToJson.baseName}.txt"
+
     script:
     """
-    echo JSON file name: ${x}
+    echo JSON file name: ${pathToJson}
+    touch ${pathToJson.baseName}.txt
     """
 }
 
@@ -19,5 +25,5 @@ workflow build_ligands {
     extract_database_ch
     main:
     // Process each JSON file asynchronously
-    echoJsonFileName(extract_database_ch)
+    build_ligand(extract_database_ch)
 }
