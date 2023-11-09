@@ -11,6 +11,9 @@ include { quality_wf } from './modules/quality'
 include { align_wf } from './modules/align'
 include { extract_database } from './modules/database_reader'
 include { build_ligands } from './modules/system_builder'
+include { build_solvents } from './modules/system_builder'
+
+//include { minimize_ligands } from './modules/minimizer'
 
 
 // Function which prints help message text
@@ -100,6 +103,10 @@ log.info """\
         )
         nc = extract_database.out.json.flatten()
         build_ligands(nc)
+        build_ligands.out.prm.view()
+        build_ligands.out.crd.view()
+        solvent = Channel.from( [["cSPCE","298.15"]] )
+        build_solvents(solvent)
     }
     if (false){
         // If the --fastq_folder input option was provided
