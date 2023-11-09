@@ -5,12 +5,12 @@ nextflow.enable.dsl=2
 
 
 process echoJsonFileName {
+    debug true
     input:
-    path json_file
-
+    path x
     script:
     """
-    echo "JSON file name: ${json_file}"
+    echo JSON file name: ${x}
     """
 }
 
