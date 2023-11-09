@@ -65,13 +65,15 @@ process build_ligand {
 
 process get_conc_dieps {
     container "${params.container__openff_toolkit}"
+    publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
 
     debug true
     input:
     tuple val(model), val(T)
     output:
     path('solvParams.json'), emit: json
-    shell:
+    path('solv_susc.sh'), emit: script
+    script:
     
     """
     #!/usr/bin/env python
@@ -127,6 +129,41 @@ process get_conc_dieps {
 
     with open("solvParams.json", 'w') as file:
         json.dump(df, file)
+
+    SOLV_SUCEPT_SCRPT = '''#!/bin/bash
+    cat > {name1d}.inp <<EOF
+    &PARAMETERS
+        THEORY='{rism1d}', CLOSUR='{closure}',           !Theory
+        NR=16384, DR=0.025,                    !Grid
+        OUTLST='xCGT', rout=0,                 !Output
+        NIS=20, DELVV=0.3, TOLVV=1.e-12,       !MDIIS
+        KSAVE=-1, KSHOW=1, maxstep=10000,      !Check pointing and iterations
+        SMEAR=1, ADBCOR=0.5,                   !Electrostatics
+        TEMPER={temp}, DIEps={diel},           !bulk solvent properties
+        NSP=1
+    /
+        &SPECIES                               !SPC water
+        DENSITY={conc}d0,
+        MODEL="\$AMBERHOME/dat/rism1d/mdl/{smodel}.mdl"
+    /
+    EOF
+
+    rism1d {name1d} > {name1d}.out
+    '''
+    
+    T=${T}
+    smodel="${model}"
+    rism1d="DRISM"
+    closure="PSE3"
+    rism1d_name = '{smodel}_{temp}'.format(smodel=smodel,temp=T)
+    diel = dieps
+    conc = conc
+    input_string=SOLV_SUCEPT_SCRPT.format(temp=T, diel=diel, conc=conc,\
+                        smodel=smodel, rism1d=rism1d,\
+                        closure=closure.upper(),\
+                        name1d=rism1d_name)
+    with open('solv_susc.sh', "w") as text_file:
+        text_file.write(input_string)
     """
 }
 
@@ -182,7 +219,5 @@ workflow build_solvents {
     main:
     // Process each JSON file asynchronously
     get_conc_dieps(solv_temp_pairs)
-    get_conc_dieps.out.json.view()
-
     //build_solvent(get_conc_dieps.out.json)
 }
