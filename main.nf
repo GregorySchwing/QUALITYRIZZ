@@ -16,7 +16,9 @@ def helpMessage() {
     log.info"""
 Usage:
 
-nextflow run FredHutch/workflow-template-nextflow <ARGUMENTS>
+nextflow run -profile docker . --fastq_folder test_data/fastq \
+--genome_fasta test_data/genome_fasta/NC_001422.1.fasta \
+--output_folder schwing --param_name nextflow.config
 
 Required Arguments:
 
