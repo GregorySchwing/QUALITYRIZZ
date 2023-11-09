@@ -11,12 +11,55 @@ process build_ligand {
     input:
     path pathToJson
     output:
-    path "${pathToJson.baseName}.txt"
+    path "ligand.prmtop"
+    path "ligand.inpcrd"
 
     script:
     """
-    echo JSON file name: ${pathToJson}
-    touch ${pathToJson.baseName}.txt
+    #!/usr/bin/env python
+    import json
+    # Open and read the JSON file
+    with open("${pathToJson}", "r") as file:
+        data = json.load(file)
+    smiles=data["smiles"]
+    # Imports from the toolkit
+    from openff.toolkit import ForceField, Molecule, Topology
+    from openff.units import Quantity, unit
+    from openff.interchange import Interchange
+
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+    from rdkit.Chem import rdmolfiles
+    def embed(mol, seed=None):
+        params = AllChem.ETKDGv2()
+        if seed is not None:
+            params.randomSeed = seed
+        else:
+            params.randomSeed = 123
+        AllChem.EmbedMolecule(mol, params)
+        return mol
+
+    forcefield = ForceField("openff-2.1.0.offxml")
+    openff_mol = Molecule.from_smiles(smiles)
+    rdmol = openff_mol.to_rdkit()
+    rdmol3D = embed(rdmol,123)
+    # Create a PDB file
+    writer = rdmolfiles.MolToPDBFile(rdmol3D, "ligand.pdb")
+    # Load the topology from a PDB file and `Molecule` objects
+    topology = Topology.from_pdb(
+        "ligand.pdb",
+        unique_molecules=[openff_mol],
+    )
+
+    interchange = Interchange.from_smirnoff(
+        force_field=forcefield,
+        topology=topology,
+    )
+
+    interchange.to_prmtop("ligand.prmtop")
+    interchange.to_inpcrd("ligand.inpcrd")
+    
+
     """
 }
 
