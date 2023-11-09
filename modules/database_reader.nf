@@ -7,7 +7,7 @@ process depickle {
     container "${params.container__openff_toolkit}"
     publishDir "${params.output_folder}/${params.database}/json", mode: 'copy', overwrite: true
 
-    debug true
+    debug false
     input:
     path pathToDatabase
     

@@ -7,7 +7,7 @@ process build_ligand {
     container "${params.container__openff_toolkit}"
     publishDir "${params.output_folder}/${params.database}/systems/${pathToJson.baseName}", mode: 'copy', overwrite: true
 
-    debug true
+    debug false
     input:
     path pathToJson
     output:
@@ -20,6 +20,7 @@ process build_ligand {
     import json
     # Open and read the JSON file
     with open("${pathToJson}", "r") as file:
+        print("reading ${pathToJson}")
         data = json.load(file)
     smiles=data["smiles"]
     # Imports from the toolkit
@@ -59,7 +60,6 @@ process build_ligand {
     interchange.to_prmtop("ligand.prmtop")
     interchange.to_inpcrd("ligand.inpcrd")
     
-
     """
 }
 
