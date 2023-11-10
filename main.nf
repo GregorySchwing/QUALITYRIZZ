@@ -10,6 +10,7 @@ include { extract_database } from './modules/database_reader'
 include { build_ligands } from './modules/system_builder'
 include { build_solvents } from './modules/system_builder'
 include { minimize_ligands } from './modules/minimizer'
+include { rism_solvation } from './modules/rism'
 
 
 // Function which prints help message text
@@ -77,7 +78,6 @@ log.info """\
             pathToDataBase = "$projectDir/databases/FreeSolv/database.pickle"
         }
 
-
         database = Channel
             .fromPath( pathToDataBase )
 
@@ -86,14 +86,9 @@ log.info """\
         )
         nc = extract_database.out.json.flatten()
         build_ligands(nc)
-        //build_ligands.out.prm.view()
-        //build_ligands.out.crd.view()
         solvent = Channel.from( [["cSPCE","298.15"]] )
         build_solvents(solvent)
-        //build_ligands.out.system.view()
-        //build_solvents.out.solvent.view()
-
-        //solvent.combine(build_ligands.out.molecule).view()
         minimize_ligands(build_ligands.out.system,build_solvents.out.solvent)
+        rism_solvation(minimize_ligands.out.minimized_system)
     }
 }
