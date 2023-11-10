@@ -11,6 +11,7 @@ process build_ligand {
     input:
     path pathToJson
     output:
+    val(pathToJson.baseName), emit: molecule
     path("ligand.prmtop"), emit: prm
     path("ligand.inpcrd"), emit: crd
 
@@ -173,7 +174,9 @@ process build_solvent {
     input:
     tuple val(model), val(T), path("solv_susc.sh")
     output:
-    path("${model}_${T}.*")
+    path("${model}_${T}.*"), emit: paths
+    val(model), emit: solvent
+    val(T), emit: temperature
     shell:
     """
     # Some code in script1.sh
@@ -192,6 +195,7 @@ workflow build_ligands {
     // Process each JSON file asynchronously
     build_ligand(extract_database_ch)
     emit:
+    molecule = build_ligand.out.molecule
     prm = build_ligand.out.prm
     crd = build_ligand.out.crd
 
@@ -205,5 +209,8 @@ workflow build_solvents {
     get_conc_dieps(solv_temp_pairs)
     build_solvent(get_conc_dieps.out.script)
     emit:
-    xvv = build_solvent.out.flatten().filter { file -> file.name.endsWith("xvv") }
+    xvv = build_solvent.out.paths.flatten().filter { file -> file.name.endsWith("xvv") }
+    temperature = build_solvent.out.temperature
+    solvent = build_solvent.out.solvent
+
 }

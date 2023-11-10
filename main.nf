@@ -108,6 +108,9 @@ log.info """\
         solvent = Channel.from( [["cSPCE","298.15"]] )
         build_solvents(solvent)
         build_solvents.out.xvv.view()
+        build_solvents.out.temperature.view()
+        build_solvents.out.solvent.view()
+
     }
     if (false){
         // If the --fastq_folder input option was provided
