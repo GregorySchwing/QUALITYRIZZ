@@ -5,70 +5,59 @@ nextflow.enable.dsl=2
 
 process minimize_ligand {
     container "${params.container__biobb_amber}"
-    publishDir "${params.output_folder}/${params.database}/minimizations/${model}_${T}_${molecule}", mode: 'copy', overwrite: false
+    publishDir "${params.output_folder}/${params.database}/minimizations/${molecule}_${model}_${temperature}", mode: 'copy', overwrite: false
 
     debug true
     input:
-    tuple val(model), val(T), val(molecule)
+    tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv) 
     output:
-    path("ligand.prmtop"), emit: prm
-    path("ligand.inpcrd"), emit: crd
+    path("sander.*"), emit: paths
 
     script:
     """
     #!/usr/bin/env python
-    import json
-    # Open and read the JSON file
-    with open("${pathToJson}", "r") as file:
-        print("reading ${pathToJson}")
-        data = json.load(file)
-    smiles=data["smiles"]
-    # Imports from the toolkit
-    from openff.toolkit import ForceField, Molecule, Topology
-    from openff.units import Quantity, unit
-    from openff.interchange import Interchange
+    print("Hello from ${molecule} ${prm} ${crd} ${model} ${temperature} ${xvv}")
+    # Import module
+    from biobb_amber.sander.sander_mdrun import sander_mdrun
 
-    from rdkit import Chem
-    from rdkit.Chem import AllChem
-    from rdkit.Chem import rdmolfiles
-    def embed(mol, seed=None):
-        params = AllChem.ETKDGv2()
-        if seed is not None:
-            params.randomSeed = seed
-        else:
-            params.randomSeed = 123
-        AllChem.EmbedMolecule(mol, params)
-        return mol
+    # Create prop dict and inputs/outputs
+    output_n_min_traj_file = 'sander.n_min.x'
+    output_n_min_rst_file = 'sander.n_min.rst7'
+    output_n_min_log_file = 'sander.n_min.log'
 
-    forcefield = ForceField("openff-2.1.0.offxml")
-    openff_mol = Molecule.from_smiles(smiles)
-    rdmol = openff_mol.to_rdkit()
-    rdmol3D = embed(rdmol,123)
-    # Create a PDB file
-    writer = rdmolfiles.MolToPDBFile(rdmol3D, "ligand.pdb")
-    # Load the topology from a PDB file and `Molecule` objects
-    topology = Topology.from_pdb(
-        "ligand.pdb",
-        unique_molecules=[openff_mol],
-    )
+    # Minimization script from PC_PLUS
+    prop = {
+        'simulation_type' : "minimization",
+        "mdin" : { 
+            'imin' : 1, # perform minimization
+            'maxcyc' : 500, # The maximum number of cycles of minimization
+            'drms' : 1e-3, # RMS force
+            'ntmin' : 3, # xmin algorithm
+            'ntb' : 0, # no periodic boundary
+            'cut' : 999, # non-bonded cutoff
+            'ntpr' : 5, # printing frequency
+            'ntxo' : 1, # asci formatted rst7
+        },
+        "dev" : "-xvv {xvv_file}".format(xvv_file="${xvv}"),
+    }
 
-    interchange = Interchange.from_smirnoff(
-        force_field=forcefield,
-        topology=topology,
-    )
+    # Create and launch bb
+    sander_mdrun(input_top_path="${prm}",
+                input_crd_path="${crd}",
+                output_traj_path=output_n_min_traj_file,
+                output_rst_path=output_n_min_rst_file,
+                output_log_path=output_n_min_log_file,
+                properties=prop)
 
-    interchange.to_prmtop("ligand.prmtop")
-    interchange.to_inpcrd("ligand.inpcrd")
-    
     """
 }
 
-workflow minimize_ligand {
+workflow minimize_ligands {
     take:
-    extract_database_ch
+    systems
+    solvents
     main:
     // Process each JSON file asynchronously
-    minimize_ligand(extract_database_ch)
-
-
+    all=systems.combine(solvents)
+    minimize_ligand(all)
 }

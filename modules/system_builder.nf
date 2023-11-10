@@ -14,7 +14,7 @@ process build_ligand {
     val(pathToJson.baseName), emit: molecule
     path("ligand.prmtop"), emit: prm
     path("ligand.inpcrd"), emit: crd
-
+    tuple val(pathToJson.baseName), path("ligand.prmtop"), path("ligand.inpcrd"), emit: system
     script:
     """
     #!/usr/bin/env python
@@ -175,13 +175,12 @@ process build_solvent {
     tuple val(model), val(T), path("solv_susc.sh")
     output:
     path("${model}_${T}.*"), emit: paths
-    val(model), emit: solvent
+    val(model), emit: model
     val(T), emit: temperature
+    tuple val(model), val(T), path("${model}_${T}.xvv"), emit: solvent
     shell:
     """
     # Some code in script1.sh
-    echo '${model}_${T}'
-    which rism1d
     bash "solv_susc.sh"
     rism1d "${model}_${T}" > "${model}_${T}.out"
     """
@@ -198,7 +197,7 @@ workflow build_ligands {
     molecule = build_ligand.out.molecule
     prm = build_ligand.out.prm
     crd = build_ligand.out.crd
-
+    system = build_ligand.out.system
 }
 
 workflow build_solvents {
@@ -210,6 +209,7 @@ workflow build_solvents {
     build_solvent(get_conc_dieps.out.script)
     emit:
     xvv = build_solvent.out.paths.flatten().filter { file -> file.name.endsWith("xvv") }
+    model = build_solvent.out.model
     temperature = build_solvent.out.temperature
     solvent = build_solvent.out.solvent
 
