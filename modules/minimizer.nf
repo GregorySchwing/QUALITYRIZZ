@@ -63,6 +63,27 @@ process minimize_ligand {
                 output_dat_path=output_n_min_dat_file,
                 properties=prop)
 
+
+    rst7_w_box_file = 'sander.n_min.box.rst7'
+    addBoxCommand = "ChBox -c {rst7File} -X 50 -Y 50 -Z 50 -o {rstWBox}".format(rst7File=output_n_min_rst_file\
+                                                                                ,rstWBox=rst7_w_box_file)
+    import subprocess
+
+    # Run the Bash script using subprocess
+    completed_process = subprocess.run(addBoxCommand, shell=True, executable='/bin/bash', stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    # Check the exit code and capture the output
+    exit_code = completed_process.returncode
+    if (exit_code != 0):
+        output = completed_process.stdout
+        error_output = completed_process.stderr
+
+        # Print the results
+        print(f"Exit code: {exit_code}")
+        print("Output:")
+        print(output)
+        print("Error Output:")
+        print(error_output)
     """
 }
 
