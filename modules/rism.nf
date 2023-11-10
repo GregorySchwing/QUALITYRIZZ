@@ -81,6 +81,7 @@ process solvation {
     #print(space_separated_string)
     import subprocess
     extracted_number = 0.0
+    foundNumber = False
     # Command to run
     # Run the command and capture the output
     output = subprocess.check_output(space_separated_string, shell=True, text=True)
@@ -93,8 +94,9 @@ process solvation {
             # Extract the number from the second part
             extracted_number = float(parts[1])
             print(extracted_number)
+            foundNumber = True
 
-    if extracted_number != 0.0:
+    if foundNumber:
         # Extract the value from the match
         print("PC+dG*(solv)",extracted_number,"kcal/mol")
     else:

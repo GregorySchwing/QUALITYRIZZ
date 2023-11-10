@@ -29,7 +29,7 @@ process depickle {
     # Write the dictionary to the file in JSON format
     counter = 0
     for key in df.keys():
-        if counter > 1:
+        if counter > 10:
             break
         
         with open("{key}.json".format(key=key), 'w') as file:
