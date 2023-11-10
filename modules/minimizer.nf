@@ -49,6 +49,20 @@ process minimize_ligand {
                 output_log_path=output_n_min_log_file,
                 properties=prop)
 
+    # Import module
+    from biobb_amber.process.process_minout import process_minout
+
+    # Create prop dict and inputs/outputs
+    output_n_min_dat_file = 'sander.n_min.energy.dat'
+    prop = {
+        "terms" : ['ENERGY']
+    }
+
+    # Create and launch bb
+    process_minout(input_log_path=output_n_min_log_file,
+                output_dat_path=output_n_min_dat_file,
+                properties=prop)
+
     """
 }
 
