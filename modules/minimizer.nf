@@ -84,6 +84,16 @@ process minimize_ligand {
         print(output)
         print("Error Output:")
         print(error_output)
+
+    from biobb_amber.ambpdb.amber_to_pdb import amber_to_pdb
+    output_n_min_pdb_file = "sander.n_min.pdb"
+    prop = {
+        'remove_tmp': True
+    }
+    amber_to_pdb(input_top_path="${prm}",
+                input_crd_path="${crd}",
+                output_pdb_path=output_n_min_pdb_file,
+                properties=prop)
     """
 }
 
