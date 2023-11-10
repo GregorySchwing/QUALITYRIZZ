@@ -7,11 +7,13 @@ process minimize_ligand {
     container "${params.container__biobb_amber}"
     publishDir "${params.output_folder}/${params.database}/minimizations/${molecule}_${model}_${temperature}", mode: 'copy', overwrite: false
 
-    debug true
+    debug false
     input:
     tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv) 
     output:
     path("sander.*"), emit: paths
+    tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv),
+    path("sander.n_min.box.pdb"), path("sander.n_min.box.rst7"), emit: minimized_system
 
     script:
     """
@@ -86,12 +88,13 @@ process minimize_ligand {
         print(error_output)
 
     from biobb_amber.ambpdb.amber_to_pdb import amber_to_pdb
-    output_n_min_pdb_file = "sander.n_min.pdb"
+    output_n_min_pdb_file = "sander.n_min.box.pdb"
     prop = {
-        'remove_tmp': True
+        'remove_tmp': True,
+        'check_extensions' : False,
     }
     amber_to_pdb(input_top_path="${prm}",
-                input_crd_path="${crd}",
+                input_crd_path=rst7_w_box_file,
                 output_pdb_path=output_n_min_pdb_file,
                 properties=prop)
     """
@@ -105,4 +108,6 @@ workflow minimize_ligands {
     // Process each JSON file asynchronously
     all=systems.combine(solvents)
     minimize_ligand(all)
+    emit:
+    minimized_system = minimize_ligand.out.minimized_system
 }

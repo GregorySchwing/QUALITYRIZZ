@@ -68,7 +68,7 @@ process build_solvent {
     container "${params.container__biobb_amber}"
     publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
 
-    debug true
+    debug false
     input:
     tuple val(model), val(T)
     output:
