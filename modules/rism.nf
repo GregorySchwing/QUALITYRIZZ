@@ -12,7 +12,7 @@ process solvation {
     tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv), path(pdb), path(rst)
     output:
     path("rism.log"), emit: log
-    path("results.json"), emit: json
+    path("${molecule}_${model}_${temperature}.json"), emit: json
 
     script:
     """
@@ -108,7 +108,7 @@ process solvation {
 
     import json
     results = {"molecule":"${molecule}", "solvent" : "${model}", "temperature" : ${temperature}, "PC+dG*(solv)(kcal/mol)":extracted_number}
-    with open("results.json", 'w') as file:
+    with open("${molecule}_${model}_${temperature}.json", 'w') as file:
         json.dump(results, file)
     """
 }
@@ -118,4 +118,6 @@ workflow rism_solvation {
     minimized_systems
     main:
     solvation(minimized_systems)
+    emit:
+    json = solvation.out.json
 }
