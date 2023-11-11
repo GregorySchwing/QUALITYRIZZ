@@ -16,11 +16,11 @@ process analyze {
     script:
     """
     #!/usr/bin/env python
-    print("Hello World")
     import json
     import pandas as pd
     import matplotlib.pyplot as plt
     import numpy as np
+    from scipy.stats import pearsonr  # Import the pearsonr function
 
     # Assuming the path to the database is specified
     path_to_database = "${pathToDatabase}"
@@ -49,6 +49,10 @@ process analyze {
     result_df.set_index("molecule", inplace=True)
     result_df.to_csv("results.csv")
 
+    # Calculate the Pearson correlation coefficient
+    correlation_coefficient, _ = pearsonr(result_df["PC+dG*(solv)(kcal/mol)"], result_df["expt (solv)(kcal/mol)"])
+    print("R=",correlation_coefficient)
+
     # Create a scatter plot
     plt.figure(figsize=(10, 6))
     plt.scatter(result_df["expt (solv)(kcal/mol)"], result_df["PC+dG*(solv)(kcal/mol)"], label="Data points")
@@ -57,7 +61,7 @@ process analyze {
     trendline = np.polyfit(result_df["expt (solv)(kcal/mol)"], result_df["PC+dG*(solv)(kcal/mol)"], 1)
     plt.plot(result_df["expt (solv)(kcal/mol)"], np.polyval(trendline, result_df["expt (solv)(kcal/mol)"]), color='red', label='Trendline')
 
-    plt.title("Scatter Plot of PC+dG*(solv) vs. expt with Trendline")
+    plt.title("Scatter Plot of PC+dG*(solv) vs. expt (R = {pearson})".format(pearson=correlation_coefficient))
     plt.xlabel("expt (ΔGsolv)(kcal/mol)", fontsize=20)
     plt.ylabel("PC+dG*(ΔGsolv)(kcal/mol)", fontsize=20)
     plt.legend()
