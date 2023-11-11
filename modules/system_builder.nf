@@ -42,7 +42,7 @@ process build_ligand {
         return mol
 
     forcefield = ForceField("openff-2.1.0.offxml")
-    openff_mol = Molecule.from_smiles(smiles)
+    openff_mol = Molecule.from_smiles(smiles,allow_undefined_stereo=True)
     rdmol = openff_mol.to_rdkit()
     rdmol3D = embed(rdmol,123)
     # Create a PDB file
