@@ -78,7 +78,7 @@ log.info """\
         if (params.database == "FreeSolv"){
             pathToDataBase = "$projectDir/databases/FreeSolv/database.pickle"
         }
-
+        if (false){
         database = Channel
             .fromPath( pathToDataBase )
         database.view()
@@ -87,12 +87,15 @@ log.info """\
         )
         nc = extract_database.out.json.flatten()
         build_ligands(nc)
+        }
         solvent = Channel.from( [["cSPCE","298.15"]] )
         build_solvents(solvent)
+        if (false){
         minimize_ligands(build_ligands.out.system,build_solvents.out.solvent)
         rism_solvation(minimize_ligands.out.minimized_system)
         results = rism_solvation.out.json.collect()
         results.view()
         analyze_solvation(results,database)
+        }
     }
 }
