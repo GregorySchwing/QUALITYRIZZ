@@ -146,7 +146,7 @@ process build_solvent {
     /
         &SPECIES                               !SPC water
         DENSITY={conc}d0,
-        MODEL="\$AMBERHOME/dat/rism1d/mdl/{smodel}.mdl"
+        MODEL="/usr/local/dat/rism1d/mdl/{smodel}.mdl"
     /
     EOF
 
