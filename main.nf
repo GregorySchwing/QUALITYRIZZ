@@ -78,7 +78,7 @@ log.info """\
         if (params.database == "FreeSolv"){
             pathToDataBase = "$projectDir/databases/FreeSolv/database.pickle"
         }
-        if (false){
+        if (true){
         database = Channel
             .fromPath( pathToDataBase )
         database.view()
