@@ -106,7 +106,7 @@ process solvation {
 
     # Open the file in write mode and write the string
     with open('rism.log', 'w') as file:
-        file.write(output)
+        file.write(process.stdout)
 
     import json
     results = {"molecule":"${molecule}", "solvent" : "${model}", "temperature" : ${temperature}, "PC+dG*(solv)(kcal/mol)":extracted_number}
