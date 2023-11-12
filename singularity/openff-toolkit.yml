@@ -1,5 +1,0 @@
-name: openff-toolkit
-channels:
-  - conda-forge
-dependencies:
-  - openff-toolkit=0.14.4
