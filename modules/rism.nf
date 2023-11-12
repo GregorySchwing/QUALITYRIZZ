@@ -84,8 +84,10 @@ process solvation {
     foundNumber = False
     # Command to run
     # Run the command and capture the output
-    output = subprocess.check_output(space_separated_string, shell=True, text=True)
-    lines = output.splitlines()
+    #output = subprocess.check_output(space_separated_string, shell=True, text=True)
+    process = subprocess.run(['bash', '-c', input_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    lines = process.stdout.splitlines()
     for line in lines:
         # Split the line into parts based on whitespace
         parts = line.split()
