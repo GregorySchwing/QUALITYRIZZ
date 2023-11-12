@@ -91,7 +91,6 @@ log.info """\
         minimize_ligands(build_ligands.out.system,build_solvents.out.solvent)
         rism_solvation(minimize_ligands.out.minimized_system)
         results = rism_solvation.out.json.collect()
-        results.view()
         analyze_solvation(results,database)
     }
 }
