@@ -1,0 +1,14 @@
+name: deepchem
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - scipy
+  - rdkit
+  - tensorflow
+  - pip
+  - pip:
+    # works for regular pip packages
+    - deepchem==2.7.1
+    - --pre
+
