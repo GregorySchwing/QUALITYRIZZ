@@ -74,14 +74,20 @@ log.info """\
          .stripIndent()
 
     if ( params.database ){
-
-
+        waterModels = ["fb3","fb3mod","fb4","opc","opc3","opc3pol","spce","spceb","tip3p","tip4pd","tip4pd-a99SBdisp","tip4pew"]
+        testWaterModels = ["spce","tip3p"]
+        temperatures = ["298.15"]
+        waterChannel = Channel.from( waterModels )
+        temperatureChannel = Channel.from( temperatures )
+        solventChannel = waterChannel.combine(temperatureChannel)
+        solventChannel.view()
         solvent = Channel.from( [["cSPCE","298.15"]] )
-        build_solvents(solvent)
+        build_solvents(solventChannel)
         // Channel holds the indices to sample.
         // In future, will use ML to determine which samples along with parameters
         // In an iterative loop.
-        Channel.of(0..641)
+        if (false){
+        Channel.of(0..1)
                 | buffer(size: 642, remainder: true)
                 | extract_database_deepchem 
                 | flatten 
@@ -91,5 +97,6 @@ log.info """\
                 | rism_solvation
                 | collect
                 | analyze_solvation
+        }
     }
 }
