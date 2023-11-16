@@ -42,8 +42,7 @@ process analyze {
         # Extract relevant information
         molecule = data["molecule"]
         pc_dg_solv = data["PC+dG*(solv)(kcal/mol)"]
-        expt_solv = y[file_id]
-
+        expt_solv = y[int(molecule)][0]
         # Append the data to the result DataFrame
         result_df = pd.concat([result_df, pd.DataFrame({"molecule": [molecule], "PC+dG*(solv)(kcal/mol)": [pc_dg_solv], "expt (solv)(kcal/mol)": [expt_solv]})], ignore_index=True)
 
