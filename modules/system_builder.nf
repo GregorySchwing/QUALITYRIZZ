@@ -186,9 +186,9 @@ workflow build_ligands {
     // Process each JSON file asynchronously
     build_ligand(extract_database_ch)
     emit:
-    molecule = build_ligand.out.molecule
-    prm = build_ligand.out.prm
-    crd = build_ligand.out.crd
+    //molecule = build_ligand.out.molecule
+    //prm = build_ligand.out.prm
+    //crd = build_ligand.out.crd
     system = build_ligand.out.system
 }
 

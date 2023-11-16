@@ -102,11 +102,9 @@ process minimize_ligand {
 
 workflow minimize_ligands {
     take:
-    systems
-    solvents
+    all
     main:
     // Process each JSON file asynchronously
-    all=systems.combine(solvents)
     minimize_ligand(all)
     emit:
     minimized_system = minimize_ligand.out.minimized_system

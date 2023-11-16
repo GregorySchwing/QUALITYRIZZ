@@ -4,30 +4,32 @@
 nextflow.enable.dsl=2
 
 process analyze {
-    container "${params.container__openff_toolkit}"
+    container "${params.container__deep_chem}"
     publishDir "${params.output_folder}/${params.database}/results", mode: 'copy', overwrite: false
 
     debug true
     input:
         path(ids)
-        path(pathToDatabase)
     output:
         path("results.*")
     script:
     """
     #!/usr/bin/env python
     import json
+    from deepchem.molnet import load_freesolv
+
     import pandas as pd
     import matplotlib.pyplot as plt
     import numpy as np
     from scipy.stats import pearsonr  # Import the pearsonr function
 
-    # Assuming the path to the database is specified
-    path_to_database = "${pathToDatabase}"
-    database = pd.read_pickle(path_to_database)
 
     # Assuming the list of file paths is provided
     file_ids = "${ids}".split(" ")
+
+    tasks, datasets, transformers = load_freesolv(splitter=None)
+    train = datasets[0]
+    x,y,w,ids = train.X, train.y, train.w, train.ids
 
     # Create an empty DataFrame to store the extracted data
     result_df = pd.DataFrame(columns=["molecule", "PC+dG*(solv)(kcal/mol)", "expt (solv)(kcal/mol)"])
@@ -40,7 +42,7 @@ process analyze {
         # Extract relevant information
         molecule = data["molecule"]
         pc_dg_solv = data["PC+dG*(solv)(kcal/mol)"]
-        expt_solv = database.get(molecule, {}).get("expt", None)
+        expt_solv = y[file_id]
 
         # Append the data to the result DataFrame
         result_df = pd.concat([result_df, pd.DataFrame({"molecule": [molecule], "PC+dG*(solv)(kcal/mol)": [pc_dg_solv], "expt (solv)(kcal/mol)": [expt_solv]})], ignore_index=True)
@@ -76,7 +78,6 @@ process analyze {
 workflow analyze_solvation {
     take:
     solvation_results
-    database
     main:
-    analyze(solvation_results,database)
+    analyze(solvation_results)
 }

@@ -7,6 +7,9 @@ nextflow.enable.dsl=2
 
 // Import sub-workflows
 include { extract_database } from './modules/database_reader'
+include { extract_database_deepchem } from './modules/database_reader'
+
+
 include { build_ligands } from './modules/system_builder'
 include { build_solvents } from './modules/system_builder'
 include { minimize_ligands } from './modules/minimizer'
@@ -72,25 +75,19 @@ log.info """\
 
     if ( params.database ){
 
-        // Set up a channel from the pairs of files found with that pattern
 
-        pathToDataBase = ""
-        if (params.database == "FreeSolv"){
-            pathToDataBase = "$projectDir/databases/FreeSolv/database.pickle"
-        }
-        database = Channel
-            .fromPath( pathToDataBase )
-        database.view()
-        extract_database(
-            database
-        )
-        nc = extract_database.out.json.flatten()
-        build_ligands(nc)
         solvent = Channel.from( [["cSPCE","298.15"]] )
         build_solvents(solvent)
-        minimize_ligands(build_ligands.out.system,build_solvents.out.solvent)
-        rism_solvation(minimize_ligands.out.minimized_system)
-        results = rism_solvation.out.json.collect()
-        analyze_solvation(results,database)
+        // Set up a channel from the pairs of files found with that pattern
+        Channel.of(1..10)
+                | buffer(size: 2, remainder: true)
+                | extract_database_deepchem 
+                | flatten 
+                | build_ligands 
+                | combine(build_solvents.out.solvent) 
+                | minimize_ligands
+                | rism_solvation
+                | collect
+                | analyze_solvation
     }
 }
