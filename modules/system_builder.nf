@@ -198,6 +198,14 @@ process build_water_model {
     import parmed
     import numpy as np
 
+    # This script uses tleap to build the single residue 
+    # CRD/TOP, but it could be extended to take these
+    # As arguments.  
+
+    # If you are going to have ionic elements in the solvent
+    # special care needs to be taken to
+    # Ensure parameters for ions are sourced correctly!
+
     TLEAP_SCRPT = '''#!/bin/bash
     cat > "${model}_${T}".tleap <<EOF
     source leaprc.water.${model}
