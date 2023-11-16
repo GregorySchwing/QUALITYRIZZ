@@ -78,9 +78,11 @@ log.info """\
 
         solvent = Channel.from( [["cSPCE","298.15"]] )
         build_solvents(solvent)
-        // Set up a channel from the pairs of files found with that pattern
-        Channel.of(1..10)
-                | buffer(size: 2, remainder: true)
+        // Channel holds the indices to sample.
+        // In future, will use ML to determine which samples along with parameters
+        // In an iterative loop.
+        Channel.of(0..641)
+                | buffer(size: 642, remainder: true)
                 | extract_database_deepchem 
                 | flatten 
                 | build_ligands 
