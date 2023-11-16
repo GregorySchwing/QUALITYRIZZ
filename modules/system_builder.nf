@@ -197,7 +197,8 @@ process build_water_model {
     import json
     import subprocess
     import parmed
-    from collections import Counter
+    import numpy as np
+
     # Open and read the JSON file
     def water_dielectric_const(T):
         if not 253.15 <= T <= 383.15:
@@ -278,18 +279,6 @@ process build_water_model {
 
     parm = parmed.amber.LoadParm("${model}.prmtop", xyz="${model}.inpcrd")
 
-    type = [atom.type for atom in parm.residues[0].atoms]
-    charge = [atom.charge for atom in parm.residues[0].atoms]
-    name = [atom.name for atom in parm.residues[0].atoms]
-    mass = [atom.mass for atom in parm.residues[0].atoms]
-    sigma = [atom.sigma for atom in parm.residues[0].atoms]
-    epsilon = [atom.epsilon for atom in parm.residues[0].atoms]
-
-    newEpsilon = {}
-    # O eps
-    print(parm.LJ_depth)
-
-    newSigma = {}
     print(parm.bonds[1].atom1.type)
     print(parm.bonds[1].atom2.type)
     print(parm.bonds[1].type)
@@ -348,9 +337,20 @@ process build_water_model {
     print(parm._AMBERPARM_ATTRS)
     print(dir(parm))
 
+
+
+    def flatten_recursive(lst):
+        for item in lst:
+            if isinstance(item, list):
+                yield from flatten_recursive(item)
+            else:
+                yield item
+
     get_mass = lambda ltype: next(atom.mass for atom in parm.residues[0].atoms if atom.type == ltype)
     get_charge = lambda ltype: next(atom.charge for atom in parm.residues[0].atoms if atom.type == ltype)
     get_multi = lambda ltype: sum(1 for atom in parm.residues[0].atoms if atom.type == ltype)
+    #get_coords = lambda ltype: next(atom.charge for atom in parm.residues[0].atoms if atom.type == ltype)
+
     emptyMDL = parmed.amber.AmberFormat()
     emptyMDL.charge_flag="CHG"
     emptyMDL.add_flag(flag_name='TITLE',flag_format=str(parm.formats['TITLE']),data=parm.parm_data['TITLE'])
@@ -361,14 +361,8 @@ process build_water_model {
     emptyMDL.add_flag(flag_name='LJEPSILON',flag_format=str(parm.formats['RADII']),data=[parm.LJ_depth[value-1] for value in parm.LJ_types.values()])
     emptyMDL.add_flag(flag_name='LJSIGMA',flag_format=str(parm.formats['RADII']),data=[parm.LJ_radius[value-1] for value in parm.LJ_types.values()])
     emptyMDL.add_flag(flag_name='MULTI',flag_format=str(parm.formats['POINTERS']),data=[get_multi(ltype) for ltype in parm.LJ_types.keys()])
+    emptyMDL.add_flag(flag_name='COORD',flag_format=str(parm.formats['RADII']),data=np.concatenate(list(np.array(item).flatten() for item in parm.get_coordinates())))
 
-    print(dir(emptyMDL))
-    #[key for key in parm.LJ_types.keys()]
-    print(emptyMDL.flag_list)
-    print(emptyMDL.parm_data)
-    print(emptyMDL.formats)
-    print(parm.parm_data)
-    print(parm.formats)
     emptyMDL.write_parm("c{}.mdl".format("${model}".upper()))
     quit()
 
