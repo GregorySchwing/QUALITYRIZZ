@@ -184,17 +184,20 @@ process build_water_model {
     container "${params.container__biobb_amber}"
     publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
 
-    debug false
+    debug true
     input:
     tuple val(model), val(T)
     output:
     path("${model}.*"), emit: water
+    path("c*.*"), emit: cWater
+
     shell:
     """
     #!/usr/bin/env python
     import json
     import subprocess
-
+    import parmed
+    from collections import Counter
     # Open and read the JSON file
     def water_dielectric_const(T):
         if not 253.15 <= T <= 383.15:
@@ -272,6 +275,93 @@ process build_water_model {
     # Print any errors
     if process.stderr:
         print("Errors:", process.stderr)
+
+    parm = parmed.amber.LoadParm("${model}.prmtop", xyz="${model}.inpcrd")
+
+    type = [atom.type for atom in parm.residues[0].atoms]
+    charge = [atom.charge for atom in parm.residues[0].atoms]
+    name = [atom.name for atom in parm.residues[0].atoms]
+    mass = [atom.mass for atom in parm.residues[0].atoms]
+    sigma = [atom.sigma for atom in parm.residues[0].atoms]
+    epsilon = [atom.epsilon for atom in parm.residues[0].atoms]
+
+    newEpsilon = {}
+    # O eps
+    print(parm.LJ_depth)
+
+    newSigma = {}
+    print(parm.bonds[1].atom1.type)
+    print(parm.bonds[1].atom2.type)
+    print(parm.bonds[1].type)
+    print(parm.LJ_types)
+    print(parm.LJ_radius)
+    # Create a list of indices
+    indices_list = list(range(len(parm.LJ_types)))
+    print(parm.LJ_depth)
+
+    for LJ_params in zip(parm.LJ_types,parm.LJ_radius,parm.LJ_depth):
+
+        if (LJ_params[1]==0):
+            print("embedding", LJ_params, " radius")
+            print(LJ_params[0])
+            my_type = LJ_params[0]
+
+            matching_bond = next((bond for bond in parm.bonds \
+            if (bond.atom1.type == my_type and bond.atom2.type != my_type) \
+            or (bond.atom2.type == my_type and bond.atom1.type != my_type)), None)
+            bondLength = matching_bond.type.req
+            print("bondLength",bondLength)
+
+            other_atom_type = matching_bond.atom2.type if \
+            matching_bond.atom1.type == my_type else matching_bond.atom1.type \
+            if matching_bond.atom2.type == my_type else None
+
+            other_radius = parm.LJ_radius[parm.LJ_types[other_atom_type]-1]
+            other_sigma = other_radius*(2 ** (-1/6))
+            new_sigma = other_sigma - bondLength
+            parm.LJ_radius[parm.LJ_types[my_type]-1]= new_sigma/(2 ** (-1/6))
+        if (LJ_params[2]==0):
+            print("embedding", LJ_params, " depth")
+            my_type = LJ_params[0]
+
+            matching_bond = next((bond for bond in parm.bonds \
+            if (bond.atom1.type == my_type and bond.atom2.type != my_type) \
+            or (bond.atom2.type == my_type and bond.atom1.type != my_type)), None)
+            bondLength = matching_bond.type.req
+            print("bondLength",bondLength)
+
+            other_atom_type = matching_bond.atom2.type if \
+            matching_bond.atom1.type == my_type else matching_bond.atom1.type \
+            if matching_bond.atom2.type == my_type else None
+
+            other_depth = parm.LJ_depth[parm.LJ_types[other_atom_type]-1]
+            new_depth = other_depth * 0.1
+            parm.LJ_depth[parm.LJ_types[my_type]-1]= new_depth
+    print(parm.LJ_radius)
+    print(parm.LJ_depth)
+
+    parm.recalculate_LJ()
+    parm.write_parm("c{}.prmtop".format("${model}".upper()))
+
+    print(parm.pointers)
+    print(parm.ptr)
+    print(parm._AMBERPARM_ATTRS)
+    print(dir(parm))
+
+    emptyMDL = parmed.amber.AmberFormat()
+    emptyMDL.add_flag(flag_name='TITLE',flag_format=str(parm.formats['TITLE']),data=parm.parm_data['TITLE'])
+    emptyMDL.add_flag(flag_name='POINTERS',flag_format=str(parm.formats['POINTERS']),data=[parm.pointers['NATOM'],parm.pointers['NTYPES']])
+    emptyMDL.add_flag(flag_name='ATMTYP',flag_format=str(parm.formats['ATOM_TYPE_INDEX']),data=[value for value in parm.LJ_types.values()])
+    emptyMDL.add_flag(flag_name='LJEPSILON',flag_format=str(parm.formats['RADII']),data=[parm.LJ_depth[value-1] for value in parm.LJ_types.values()])
+    emptyMDL.add_flag(flag_name='LJSIGMA',flag_format=str(parm.formats['RADII']),data=[parm.LJ_radius[value-1] for value in parm.LJ_types.values()])
+
+    print(emptyMDL.flag_list)
+    print(emptyMDL.parm_data)
+    print(emptyMDL.formats)
+    print(parm.parm_data)
+    print(parm.formats)
+    emptyMDL.write_parm("c{}.mdl".format("${model}".upper()))
+    quit()
 
     """
 

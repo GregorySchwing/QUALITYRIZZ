@@ -75,9 +75,9 @@ log.info """\
 
     if ( params.database ){
         waterModels = ["fb3","fb3mod","fb4","opc","opc3","opc3pol","spce","spceb","tip3p","tip4pd","tip4pd-a99SBdisp","tip4pew"]
-        testWaterModels = ["spce","tip3p"]
+        testWaterModels = ["tip3p"]
         temperatures = ["298.15"]
-        waterChannel = Channel.from( waterModels )
+        waterChannel = Channel.from( testWaterModels )
         temperatureChannel = Channel.from( temperatures )
         solventChannel = waterChannel.combine(temperatureChannel)
         solventChannel.view()
