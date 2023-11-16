@@ -184,7 +184,7 @@ process build_water_model {
     container "${params.container__biobb_amber}"
     publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
 
-    debug true
+    debug false
     input:
     tuple val(model), val(T)
     output:
@@ -194,62 +194,9 @@ process build_water_model {
     shell:
     """
     #!/usr/bin/env python
-    import json
     import subprocess
     import parmed
     import numpy as np
-
-    # Open and read the JSON file
-    def water_dielectric_const(T):
-        if not 253.15 <= T <= 383.15:
-            raise ValueError("Temperature is outside of allowed range.")
-        T_star = T/300.0
-        coefs = [-43.7527, 299.504, -399.364, 221.327]
-        exp_f = [-0.05, -1.47, -2.11, -2.31]
-        e = 0
-        for i in range(4):
-            e += coefs[i]*T_star**(exp_f[i])
-        return e
-
-
-    def water_concentration(T):
-        if not 253.15 <= T <= 383.15:
-            raise ValueError("Temperature is outside of allowed range.")
-        p0 = 10.0**5    # Pa
-        R = 8.31464     # J/mol/K
-        Tr = 10.0
-        Ta = 593.0
-        Tb = 232.0
-        a = [1.93763157E-2,
-            6.74458446E+3,
-            -2.22521604E+5,
-            1.00231247E+8,
-            -1.63552118E+9,
-            8.32299658E+9]
-        b = [5.78545292E-3,
-            -1.53195665E-2,
-            3.11337859E-2,
-            -4.23546241E-2,
-            3.38713507E-2,
-            -1.19946761E-2]
-        n = [None, 4., 5., 7., 8., 9.]
-        m = [1., 2., 3., 4., 5., 6.]
-        def alpha(T):
-            return Tr/(Ta - T)
-        def beta(T):
-            return Tr/(T - Tb)
-        coef = a[0] + b[0]*beta(T)**m[0]
-        for i in range(1, 6):
-            coef += a[i]*alpha(T)**n[i] + b[i]*beta(T)**m[i]
-        v0 = R*Tr/p0*coef  # m3/mol
-        return 1/(v0*1000)    # mol/L
-    dieps=round(water_dielectric_const($T), 3)
-    conc = round(water_concentration($T), 3)
-
-    df = {"model":"${model}", "T":$T, "dieps":dieps, "conc":conc}
-
-    with open("solvParams.json", 'w') as file:
-        json.dump(df, file)
 
     TLEAP_SCRPT = '''#!/bin/bash
     cat > "${model}_${T}".tleap <<EOF
@@ -345,7 +292,7 @@ process build_water_model {
                 yield from flatten_recursive(item)
             else:
                 yield item
-
+    get_name = lambda ltype: next(atom.name for atom in parm.residues[0].atoms if atom.type == ltype)
     get_mass = lambda ltype: next(atom.mass for atom in parm.residues[0].atoms if atom.type == ltype)
     get_charge = lambda ltype: next(atom.charge for atom in parm.residues[0].atoms if atom.type == ltype)
     get_multi = lambda ltype: sum(1 for atom in parm.residues[0].atoms if atom.type == ltype)
@@ -353,9 +300,11 @@ process build_water_model {
 
     emptyMDL = parmed.amber.AmberFormat()
     emptyMDL.charge_flag="CHG"
-    emptyMDL.add_flag(flag_name='TITLE',flag_format=str(parm.formats['TITLE']),data=parm.parm_data['TITLE'])
+    #emptyMDL.add_flag(flag_name='TITLE',flag_format=str(parm.formats['TITLE']),data=parm.parm_data['TITLE'])
+    emptyMDL.add_flag(flag_name='TITLE',flag_format=str(parm.formats['TITLE']),data=["c{}".format("${model}".upper())])
     emptyMDL.add_flag(flag_name='POINTERS',flag_format=str(parm.formats['POINTERS']),data=[parm.pointers['NATOM'],parm.pointers['NTYPES']])
     emptyMDL.add_flag(flag_name='ATMTYP',flag_format=str(parm.formats['ATOM_TYPE_INDEX']),data=[value for value in parm.LJ_types.values()])
+    emptyMDL.add_flag(flag_name='ATMNAME',flag_format=str(parm.formats['TITLE']),data=[get_name(ltype) for ltype in parm.LJ_types.keys()])
     emptyMDL.add_flag(flag_name='MASS',flag_format=str(parm.formats['RADII']),data=[get_mass(ltype) for ltype in parm.LJ_types.keys()])
     emptyMDL.add_flag(flag_name='CHG',flag_format=str(parm.formats['RADII']),data=[get_charge(ltype) for ltype in parm.LJ_types.keys()])
     emptyMDL.add_flag(flag_name='LJEPSILON',flag_format=str(parm.formats['RADII']),data=[parm.LJ_depth[value-1] for value in parm.LJ_types.values()])
