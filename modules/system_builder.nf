@@ -348,13 +348,22 @@ process build_water_model {
     print(parm._AMBERPARM_ATTRS)
     print(dir(parm))
 
+    get_mass = lambda ltype: next(atom.mass for atom in parm.residues[0].atoms if atom.type == ltype)
+    get_charge = lambda ltype: next(atom.charge for atom in parm.residues[0].atoms if atom.type == ltype)
+    get_multi = lambda ltype: sum(1 for atom in parm.residues[0].atoms if atom.type == ltype)
     emptyMDL = parmed.amber.AmberFormat()
+    emptyMDL.charge_flag="CHG"
     emptyMDL.add_flag(flag_name='TITLE',flag_format=str(parm.formats['TITLE']),data=parm.parm_data['TITLE'])
     emptyMDL.add_flag(flag_name='POINTERS',flag_format=str(parm.formats['POINTERS']),data=[parm.pointers['NATOM'],parm.pointers['NTYPES']])
     emptyMDL.add_flag(flag_name='ATMTYP',flag_format=str(parm.formats['ATOM_TYPE_INDEX']),data=[value for value in parm.LJ_types.values()])
+    emptyMDL.add_flag(flag_name='MASS',flag_format=str(parm.formats['RADII']),data=[get_mass(ltype) for ltype in parm.LJ_types.keys()])
+    emptyMDL.add_flag(flag_name='CHG',flag_format=str(parm.formats['RADII']),data=[get_charge(ltype) for ltype in parm.LJ_types.keys()])
     emptyMDL.add_flag(flag_name='LJEPSILON',flag_format=str(parm.formats['RADII']),data=[parm.LJ_depth[value-1] for value in parm.LJ_types.values()])
     emptyMDL.add_flag(flag_name='LJSIGMA',flag_format=str(parm.formats['RADII']),data=[parm.LJ_radius[value-1] for value in parm.LJ_types.values()])
+    emptyMDL.add_flag(flag_name='MULTI',flag_format=str(parm.formats['POINTERS']),data=[get_multi(ltype) for ltype in parm.LJ_types.keys()])
 
+    print(dir(emptyMDL))
+    #[key for key in parm.LJ_types.keys()]
     print(emptyMDL.flag_list)
     print(emptyMDL.parm_data)
     print(emptyMDL.formats)
