@@ -76,7 +76,7 @@ process build_solvent {
     val(model), emit: model
     val(T), emit: temperature
     path("${model}_${T}.*"), emit: all
-    tuple val(model), val(T), path("${model}_${T}.xvv"), emit: solvent
+    tuple val(model), val(T), path("${model}_${T}.xvv"), emit: solvent optional: true
     shell:
     """
     #!/usr/bin/env python
