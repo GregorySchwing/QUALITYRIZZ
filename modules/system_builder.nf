@@ -151,7 +151,7 @@ process build_solvent {
         MODEL="${mdl}"
     /
     EOF
-
+    {renameCommand}
     rism1d "${model}_${T}_{closure}_{iter}"  > "${model}_${T}_{closure}_{iter}.out"
     '''
     
@@ -163,25 +163,37 @@ process build_solvent {
     rism1d_name = '{smodel}_{temp}'.format(smodel=smodel,temp=T)
     diel = dieps
     conc = conc
-    input_string=SOLV_SUCEPT_SCRPT.format(temp=T, diel=diel, conc=conc,\
-                        smodel=smodel, rism1d=rism1d,\
-                        closure=closure.upper(),\
-                        NUMSTEPS=5,\
-                        iter=0,\
-                        name1d=rism1d_name)
 
-    import subprocess
-    # Run the script in the current Bash environment
-    process = subprocess.run(['bash', '-c', input_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    closure_list = ["KH", "PSE1", "PSE2", "PSE3"]
+    RENAMECOMMAND = ""
+    LASTRUN = ""
+    for closure in closure_list:
+        for iter in range(6):
+            if (LASTRUN != ""):
+                THISRUN = "${model}_${T}_{closure}_{iter}".format(closure=closure,iter=iter)
+                RENAMECOMMAND = "mv {LASTRUN}.sav {THISRUN}.sav".format(LASTRUN=LASTRUN,THISRUN=THISRUN)
+            input_string=SOLV_SUCEPT_SCRPT.format(temp=T, diel=diel, conc=conc,\
+                                smodel=smodel, rism1d=rism1d,\
+                                closure=closure.upper(),\
+                                NUMSTEPS=10000,\
+                                iter=iter,\
+                                renameCommand=RENAMECOMMAND,\
+                                name1d=rism1d_name)
 
-    # Print the output
-    print("Output:", process.stdout)
+            import subprocess
+            # Run the script in the current Bash environment
+            process = subprocess.run(['bash', '-c', input_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    # Print any errors
-    if process.stderr:
-        print("Errors:", process.stderr)
+            # Print the output
+            print("Output:", process.stdout)
 
+            # Print any errors
+            if process.stderr:
+                print("Errors:", process.stderr)
 
+            LASTRUN = "${model}_${T}_{closure}_{iter}".format(closure=closure,iter=iter)
+            if (process.stderr == ""):
+                break
     
     """
 
