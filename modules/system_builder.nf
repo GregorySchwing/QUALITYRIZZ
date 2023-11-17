@@ -72,10 +72,9 @@ process build_solvent {
     input:
     tuple val(model), val(T), path(mdl)
     output:
-    path("${model}_${T}.*"), emit: paths
+    path("${model}_${T}*.*"), emit: paths
     val(model), emit: model
     val(T), emit: temperature
-    path("${model}_${T}.*"), emit: all
     tuple val(model), val(T), path("${model}_${T}.xvv"), emit: solvent optional true
     shell:
     """
@@ -134,7 +133,7 @@ process build_solvent {
         json.dump(df, file)
 
     SOLV_SUCEPT_SCRPT = '''#!/bin/bash
-    cat > {name1d}.inp <<EOF
+    cat > ${model}_${T}_{closure}_{iter}.inp <<EOF
     &PARAMETERS
         THEORY='{rism1d}', CLOSURE='{closure}',           !Theory
         selftest=1, ! Verify inputs/outputs
@@ -153,7 +152,7 @@ process build_solvent {
     /
     EOF
 
-    rism1d "${model}_${T}"  > "${model}_${T}.out"
+    rism1d "${model}_${T}_{closure}_{iter}"  > "${model}_${T}_{closure}_{iter}.out"
     '''
     
     T=${T}
@@ -168,6 +167,7 @@ process build_solvent {
                         smodel=smodel, rism1d=rism1d,\
                         closure=closure.upper(),\
                         NUMSTEPS=5,\
+                        iter=0,\
                         name1d=rism1d_name)
 
     import subprocess
