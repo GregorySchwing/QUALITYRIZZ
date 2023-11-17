@@ -75,6 +75,7 @@ process build_solvent {
     path("${model}_${T}.*"), emit: paths
     val(model), emit: model
     val(T), emit: temperature
+    path("${model}_${T}.*"), emit: all
     tuple val(model), val(T), path("${model}_${T}.xvv"), emit: solvent
     shell:
     """
@@ -136,6 +137,7 @@ process build_solvent {
     cat > {name1d}.inp <<EOF
     &PARAMETERS
         THEORY='{rism1d}', CLOSURE='{closure}',           !Theory
+        selftest=1, ! Verify inputs/outputs
         NR=16384, DR=0.025,                    !Grid
         OUTLIST='xCGT', rout=0,                !Output
         mdiis_nvec=20, mdiis_del=0.3, tolerance=1.e-12,       !MDIIS
