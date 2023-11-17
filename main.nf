@@ -75,8 +75,8 @@ log.info """\
          .stripIndent()
 
     if ( params.database ){
-        //waterModels = ["fb3","fb3mod","fb4","opc","opc3","opc3pol","spce","spceb","tip3p","tip4pd","tip4pd-a99SBdisp","tip4pew"]
-        waterModels = ["fb4"]
+        waterModels = ["fb3","fb3mod","fb4","opc","opc3","opc3pol","spce","spceb","tip3p","tip4pd","tip4pd-a99SBdisp","tip4pew"]
+        //waterModels = ["fb4"]
         temperatures = ["298.15"]
         waterChannel = Channel.from( waterModels )
         temperatureChannel = Channel.from( temperatures )
