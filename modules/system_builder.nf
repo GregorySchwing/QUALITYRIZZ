@@ -66,11 +66,11 @@ process build_ligand {
 
 process build_solvent {
     container "${params.container__biobb_amber}"
-    publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
+    publishDir "${params.output_folder}/${params.database}/1DRISM/${model}_${T}", mode: 'copy', overwrite: true
 
     debug false
     input:
-    tuple val(model), val(T)
+    tuple val(model), val(T), path(mdl)
     output:
     path("${model}_${T}.*"), emit: paths
     val(model), emit: model
@@ -146,7 +146,7 @@ process build_solvent {
     /
         &SPECIES                               !SPC water
         DENSITY={conc}d0,
-        MODEL="/usr/local/dat/rism1d/mdl/{smodel}.mdl"
+        MODEL="${mdl}"
     /
     EOF
 
@@ -157,6 +157,7 @@ process build_solvent {
     smodel="${model}"
     rism1d="DRISM"
     closure="PSE3"
+    closure="KH"
     rism1d_name = '{smodel}_{temp}'.format(smodel=smodel,temp=T)
     diel = dieps
     conc = conc
@@ -182,14 +183,13 @@ process build_solvent {
 
 process build_water_model {
     container "${params.container__biobb_amber}"
-    publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
+    publishDir "${params.output_folder}/${params.database}/solvents/c${model}", mode: 'copy', overwrite: true
 
     debug false
     input:
-    tuple val(model), val(T)
+    tuple val(model), val(temperature)
     output:
-    path("${model}.*"), emit: water
-    path("c*.*"), emit: cWater
+    tuple val(model), val(temperature), path("c*.mdl")
 
     shell:
     """
@@ -207,7 +207,7 @@ process build_water_model {
     # Ensure parameters for ions are sourced correctly!
 
     TLEAP_SCRPT = '''#!/bin/bash
-    cat > "${model}_${T}".tleap <<EOF
+    cat > "${model}".tleap <<EOF
     source leaprc.water.${model}
 
     # Create a system with one residue of OPC water
@@ -219,7 +219,7 @@ process build_water_model {
     quit
     EOF
 
-    tleap -f "${model}_${T}".tleap
+    tleap -f "${model}".tleap
     '''
 
     # Run the script in the current Bash environment
@@ -292,14 +292,6 @@ process build_water_model {
     print(parm._AMBERPARM_ATTRS)
     print(dir(parm))
 
-
-
-    def flatten_recursive(lst):
-        for item in lst:
-            if isinstance(item, list):
-                yield from flatten_recursive(item)
-            else:
-                yield item
     get_name = lambda ltype: next(atom.name for atom in parm.residues[0].atoms if atom.type == ltype)
     get_mass = lambda ltype: next(atom.mass for atom in parm.residues[0].atoms if atom.type == ltype)
     get_charge = lambda ltype: next(atom.charge for atom in parm.residues[0].atoms if atom.type == ltype)
@@ -345,11 +337,10 @@ workflow build_solvents {
     solv_temp_pairs
     main:
     //build_solvent(solv_temp_pairs)
-    build_water_model(solv_temp_pairs)
-    //emit:
-    //xvv = build_solvent.out.paths.flatten().filter { file -> file.name.endsWith("xvv") }
-    //model = build_solvent.out.model
-    //temperature = build_solvent.out.temperature
-    //solvent = build_solvent.out.solvent
-
+    build_water_model(solv_temp_pairs) | build_solvent
+    emit:
+    xvv = build_solvent.out.paths.flatten().filter { file -> file.name.endsWith("xvv") }
+    model = build_solvent.out.model
+    temperature = build_solvent.out.temperature
+    solvent = build_solvent.out.solvent
 }
