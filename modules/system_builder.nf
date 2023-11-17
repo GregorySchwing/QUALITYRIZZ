@@ -135,13 +135,13 @@ process build_solvent {
     SOLV_SUCEPT_SCRPT = '''#!/bin/bash
     cat > {name1d}.inp <<EOF
     &PARAMETERS
-        THEORY='{rism1d}', CLOSUR='{closure}',           !Theory
+        THEORY='{rism1d}', CLOSURE='{closure}',           !Theory
         NR=16384, DR=0.025,                    !Grid
-        OUTLST='xCGT', rout=0,                 !Output
-        NIS=20, DELVV=0.3, TOLVV=1.e-12,       !MDIIS
-        KSAVE=-1, KSHOW=1, maxstep=10000,      !Check pointing and iterations
+        OUTLIST='xCGT', rout=0,                !Output
+        mdiis_nvec=20, mdiis_del=0.3, tolerance=1.e-12,       !MDIIS
+        KSAVE=-1, KOUT=1, maxstep=10000,       !Check pointing and iterations
         SMEAR=1, ADBCOR=0.5,                   !Electrostatics
-        TEMPER={temp}, DIEps={diel},           !bulk solvent properties
+        TEMPERATURE={temp}, DIEps={diel},           !bulk solvent properties
         NSP=1
     /
         &SPECIES                               !SPC water
