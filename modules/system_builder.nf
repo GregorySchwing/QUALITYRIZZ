@@ -68,7 +68,7 @@ process build_solvent {
     container "${params.container__biobb_amber}"
     publishDir "${params.output_folder}/${params.database}/1DRISM/${model}_${T}", mode: 'copy', overwrite: true
 
-    debug false
+    debug true
     input:
     tuple val(model), val(T), path(mdl)
     output:
@@ -76,7 +76,7 @@ process build_solvent {
     val(model), emit: model
     val(T), emit: temperature
     path("${model}_${T}.*"), emit: all
-    tuple val(model), val(T), path("${model}_${T}.xvv"), emit: solvent optional: true
+    tuple val(model), val(T), path("${model}_${T}.xvv"), emit: solvent optional true
     shell:
     """
     #!/usr/bin/env python
@@ -141,10 +141,11 @@ process build_solvent {
         NR=16384, DR=0.025,                    !Grid
         OUTLIST='xCGT', rout=0,                !Output
         mdiis_nvec=20, mdiis_del=0.3, tolerance=1.e-12,       !MDIIS
-        KSAVE=-1, KOUT=1, maxstep=10000,       !Check pointing and iterations
+        KSAVE={NUMSTEPS}, KOUT=1, maxstep={NUMSTEPS},       !Check pointing and iterations
         SMEAR=1, ADBCOR=0.5,                   !Electrostatics
-        TEMPERATURE={temp}, DIEps={diel},           !bulk solvent properties
-        NSP=1
+        TEMPERATURE={temp}, DIEps={diel},      !bulk solvent properties
+        NSP=1,
+        entropicDecomp=0                       ! While debugging convergence
     /
         &SPECIES                               !SPC water
         DENSITY={conc}d0,
@@ -152,7 +153,7 @@ process build_solvent {
     /
     EOF
 
-    rism1d "${model}_${T}" > "${model}_${T}.out"
+    rism1d "${model}_${T}"  > "${model}_${T}.out"
     '''
     
     T=${T}
@@ -166,6 +167,7 @@ process build_solvent {
     input_string=SOLV_SUCEPT_SCRPT.format(temp=T, diel=diel, conc=conc,\
                         smodel=smodel, rism1d=rism1d,\
                         closure=closure.upper(),\
+                        NUMSTEPS=5,\
                         name1d=rism1d_name)
 
     import subprocess
@@ -178,6 +180,9 @@ process build_solvent {
     # Print any errors
     if process.stderr:
         print("Errors:", process.stderr)
+
+
+    
     """
 
 }
