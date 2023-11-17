@@ -208,7 +208,7 @@ process build_water_model {
     input:
     tuple val(model), val(temperature)
     output:
-    tuple val(model), val(temperature), path("c*.mdl")
+    tuple val(model), val(temperature), path("c*.mdl"), path("*")
 
     shell:
     """
@@ -311,16 +311,17 @@ process build_water_model {
     print(parm._AMBERPARM_ATTRS)
     print(dir(parm))
 
-    get_name = lambda ltype: next(atom.name for atom in parm.residues[0].atoms if atom.type == ltype)
-    get_mass = lambda ltype: next(atom.mass for atom in parm.residues[0].atoms if atom.type == ltype)
-    get_charge = lambda ltype: next(atom.charge for atom in parm.residues[0].atoms if atom.type == ltype)
-    get_multi = lambda ltype: sum(1 for atom in parm.residues[0].atoms if atom.type == ltype)
-    #get_coords = lambda ltype: next(atom.charge for atom in parm.residues[0].atoms if atom.type == ltype)
+    get_name = lambda ltype: next(atom.name for atom in parm.atoms if atom.type == ltype)
+    get_mass = lambda ltype: next(atom.mass for atom in parm.atoms if atom.type == ltype)
+    get_charge = lambda ltype: next(atom.charge for atom in parm.atoms if atom.type == ltype)
+    get_multi = lambda ltype: sum(1 for atom in parm.atoms if atom.type == ltype)
+    #get_coords = lambda ltype: next(atom.charge for atom in parm.atoms if atom.type == ltype)
 
+    print(parm.parm_data['TITLE'])
     emptyMDL = parmed.amber.AmberFormat()
     emptyMDL.charge_flag="CHG"
     #emptyMDL.add_flag(flag_name='TITLE',flag_format=str(parm.formats['TITLE']),data=parm.parm_data['TITLE'])
-    emptyMDL.add_flag(flag_name='TITLE',flag_format=str(parm.formats['TITLE']),data=["c{}".format("${model}".upper())])
+    emptyMDL.add_flag(flag_name='TITLE',flag_format=str(parm.formats['TITLE']),data=parm.parm_data['TITLE'])
     emptyMDL.add_flag(flag_name='POINTERS',flag_format=str(parm.formats['POINTERS']),data=[parm.pointers['NATOM'],parm.pointers['NTYPES']])
     emptyMDL.add_flag(flag_name='ATMTYP',flag_format=str(parm.formats['ATOM_TYPE_INDEX']),data=[value for value in parm.LJ_types.values()])
     emptyMDL.add_flag(flag_name='ATMNAME',flag_format=str(parm.formats['TITLE']),data=[get_name(ltype) for ltype in parm.LJ_types.keys()])
