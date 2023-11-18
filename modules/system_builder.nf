@@ -97,6 +97,8 @@ process build_water_parameters {
         # Add ideal TIP5P geometry
         bond_length = Quantity(OH_bond_length, unit.angstrom)
         print("theta",calc_theta(HH_bond_length,OH_bond_length))
+        print("rOH",bond_length)
+
         theta = Quantity(calc_theta(HH_bond_length,OH_bond_length), unit.degree).to(unit.radian)
         water_reference.add_conformer(
             bond_length
@@ -114,7 +116,7 @@ process build_water_parameters {
     #print(smirnoff.get_available_force_fields())
 
     water_interchange = ForceField("${model}").create_interchange(build_water().to_topology())
-    OH_bond, HH_bond = water_interchange.collections['Constraints'].get_force_field_parameters()
+    OH_bond, HH_bond = water_interchange.collections['Constraints'].potentials.values()
 
     # Build correct water molecule
     water_reference = build_water(OH_bond.parameters['distance'],HH_bond.parameters['distance'])
