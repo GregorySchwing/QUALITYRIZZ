@@ -146,7 +146,9 @@ process build_water_parameters {
 
     interchange.to_prmtop("water.prmtop")
     interchange.to_inpcrd("water.crd")
-
+    from parmed.amber import LoadParm
+    parm=LoadParm("water.prmtop","water.crd")
+    parm.write_mdl("water.mdl")
     """
 }
 
