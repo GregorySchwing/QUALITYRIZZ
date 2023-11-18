@@ -64,6 +64,146 @@ process build_ligand {
     """
 }
 
+process build_water_parameters {
+    container "${params.container__openff_toolkit}"
+    publishDir "${params.output_folder}/${params.database}/water_parameters/${model}", mode: 'copy', overwrite: true
+
+    debug false
+    input:
+    tuple val(model), val(temperature)
+    output:
+    tuple val(model), val(temperature), path("*")
+
+    script:
+    """
+    #!/usr/bin/env python
+    # Imports from the toolkit
+    from openff.toolkit import ForceField, Molecule, Topology
+    from openff.units import Quantity, unit
+    from openff.interchange import Interchange
+    from openff.toolkit.typing.engines.smirnoff import ForceField
+    from openff.toolkit.typing.engines import smirnoff
+
+    # Many thanks: openff-toolkit/examples/virtual_sites/vsite_showcase.ipynb
+    # And https://www.calculator.net/triangle-calculator.html
+    def build_water(OH_bond_length=1, HH_bond_length=1.63298086):
+        from math import cos, sin, acos, degrees
+        calc_theta = lambda a, b: degrees(acos(1 - ((a * a) / (2 * b * b)))) if a != 0 else None    
+        water_reference = Molecule.from_mapped_smiles("[O:1]([H:2])[H:3]")
+        water_reference.atoms[0].name = "O"
+        water_reference.atoms[1].name = "H1"
+        water_reference.atoms[2].name = "H2"
+
+        # Add ideal TIP5P geometry
+        bond_length = Quantity(OH_bond_length, unit.angstrom)
+        theta = Quantity(calc_theta(OH_bond_length,HH_bond_length), unit.degree).to(unit.radian)
+        water_reference.add_conformer(
+            bond_length
+            * Quantity(
+                [
+                    [0.0, 0.0, 0.0],
+                    [-sin(theta / 2), cos(theta / 2), 0.0],
+                    [sin(theta / 2), cos(theta / 2), 0.0],
+                ]
+            )
+        )
+
+        return water_reference
+
+    #print(smirnoff.get_available_force_fields())
+
+    water_interchange = ForceField("${model}").create_interchange(build_water().to_topology())
+    OH_bond, HH_bond = water_interchange.collections['Constraints'].get_force_field_parameters()
+
+    # Build correct water molecule
+    water_reference = build_water(OH_bond[0],HH_bond[0])
+
+    # Scaffold interchange, with bond information needed to construct water
+    interchange = ForceField("openff-2.0.0.offxml").create_interchange(water_reference.to_topology())
+
+
+    # Assigns desired forcefield parameters to interchange
+    interchange.collections['vdW'].potentials=water_interchange.collections['vdW'].potentials
+    interchange.collections['Electrostatics'].potentials=water_interchange.collections['Electrostatics'].potentials
+
+    # Tweak forcefield if you wish
+    if (False):
+        from openff.interchange.models import TopologyKey
+        oxygen = TopologyKey(atom_indices=(0,))
+        hydrogen = TopologyKey(atom_indices=(1,))
+        oxygen_pot_key = interchange.collections['vdW'].key_map[oxygen]
+        hydrogen_pot_key = interchange.collections['vdW'].key_map[hydrogen]
+        interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['sigma']= 1.0 * unit.angstrom
+        interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['sigma']= 1.1658 * unit.angstrom
+        interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['epsilon']= 0.01553 * unit.kilocalorie_per_mole
+        interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['sigma']= 3.1507 * unit.angstrom
+        interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['epsilon']= 0.01520 * unit.kilocalorie_per_mole
+
+
+
+    interchange.to_prmtop("water.prmtop")
+    interchange.to_inpcrd("water.inpcrd")
+
+    """
+}
+
+
+process build_water_coordinates {
+    container "${params.container__biobb_amber}"
+    publishDir "${params.output_folder}/${params.database}/water_parameters/${model}", mode: 'copy', overwrite: true
+
+    debug false
+    input:
+    tuple val(model), val(temperature)
+    output:
+    tuple val(model), val(temperature), path("${model}.inpcrd")
+
+    shell:
+    """
+    #!/usr/bin/env python
+    import subprocess
+    import parmed
+    import numpy as np
+
+    # This script uses tleap to build the single residue 
+    # CRD/TOP, but it could be extended to take these
+    # As arguments.  
+
+    # If you are going to have ionic elements in the solvent
+    # special care needs to be taken to
+    # Ensure parameters for ions are sourced correctly!
+
+    TLEAP_SCRPT = '''#!/bin/bash
+    cat > "${model}".tleap <<EOF
+    source leaprc.water.${model}
+
+    # Create a system with one residue of OPC water
+    mol = sequence { WAT }
+
+    # Save the system to a parameter and coordinate file
+    saveAmberParm mol ${model}.prmtop ${model}.inpcrd
+
+    quit
+    EOF
+
+    tleap -f "${model}".tleap
+    '''
+
+    # Run the script in the current Bash environment
+    process = subprocess.run(['bash', '-c', TLEAP_SCRPT], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    # Print the output
+    print("Output:", process.stdout)
+
+    # Print any errors
+    if process.stderr:
+        print("Errors:", process.stderr)
+
+    """
+
+}
+
+
 process build_solvent {
     container "${params.container__biobb_amber}"
     publishDir "${params.output_folder}/${params.database}/1DRISM/${model}_${T}", mode: 'copy', overwrite: true
@@ -357,10 +497,15 @@ workflow build_solvents {
     solv_temp_pairs
     main:
     //build_solvent(solv_temp_pairs)
-    build_water_model(solv_temp_pairs) | build_solvent
+    //build_water_model(solv_temp_pairs) 
+    //build_solvent
+    build_water_parameters(solv_temp_pairs)
+    //build_water_coordinates(solv_temp_pairs)
+    /**
     emit:
     xvv = build_solvent.out.paths.flatten().filter { file -> file.name.endsWith("xvv") }
     model = build_solvent.out.model
     temperature = build_solvent.out.temperature
     solvent = build_solvent.out.solvent
+    */
 }
