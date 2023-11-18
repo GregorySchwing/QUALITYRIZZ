@@ -68,11 +68,11 @@ process build_water_parameters {
     container "${params.container__openff_toolkit}"
     publishDir "${params.output_folder}/${params.database}/water_parameters/${model}", mode: 'copy', overwrite: true
 
-    debug true
+    debug false
     input:
     tuple val(model), val(temperature)
     output:
-    tuple val(model), val(temperature), path("*")
+    tuple val(model), val(temperature), path("*.mdl")
 
     script:
     """
@@ -154,75 +154,18 @@ process build_water_parameters {
     """
 }
 
-
-process build_water_coordinates {
-    container "${params.container__biobb_amber}"
-    publishDir "${params.output_folder}/${params.database}/water_parameters/${model}", mode: 'copy', overwrite: true
-
-    debug false
-    input:
-    tuple val(model), val(temperature)
-    output:
-    tuple val(model), val(temperature), path("${model}.inpcrd")
-
-    shell:
-    """
-    #!/usr/bin/env python
-    import subprocess
-    import parmed
-    import numpy as np
-
-    # This script uses tleap to build the single residue 
-    # CRD/TOP, but it could be extended to take these
-    # As arguments.  
-
-    # If you are going to have ionic elements in the solvent
-    # special care needs to be taken to
-    # Ensure parameters for ions are sourced correctly!
-
-    TLEAP_SCRPT = '''#!/bin/bash
-    cat > "${model}".tleap <<EOF
-    source leaprc.water.${model}
-
-    # Create a system with one residue of OPC water
-    mol = sequence { WAT }
-
-    # Save the system to a parameter and coordinate file
-    saveAmberParm mol ${model}.prmtop ${model}.inpcrd
-
-    quit
-    EOF
-
-    tleap -f "${model}".tleap
-    '''
-
-    # Run the script in the current Bash environment
-    process = subprocess.run(['bash', '-c', TLEAP_SCRPT], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-    # Print the output
-    print("Output:", process.stdout)
-
-    # Print any errors
-    if process.stderr:
-        print("Errors:", process.stderr)
-
-    """
-
-}
-
-
 process build_solvent {
     container "${params.container__biobb_amber}"
     publishDir "${params.output_folder}/${params.database}/1DRISM/${model}_${T}", mode: 'copy', overwrite: true
 
-    debug true
+    debug false
     input:
     tuple val(model), val(T), path(mdl)
     output:
     path("${model}_${T}*.*"), emit: paths
     val(model), emit: model
     val(T), emit: temperature
-    tuple val(model), val(T), path("${model}_${T}.xvv"), emit: solvent optional true
+    tuple val(model), val(T), path("${model}_${T}_PSE3_*.xvv"), emit: solvent optional true
     shell:
     """
     #!/usr/bin/env python
@@ -346,146 +289,6 @@ process build_solvent {
 
 }
 
-
-process build_water_model {
-    container "${params.container__biobb_amber}"
-    publishDir "${params.output_folder}/${params.database}/solvents/c${model}", mode: 'copy', overwrite: true
-
-    debug false
-    input:
-    tuple val(model), val(temperature)
-    output:
-    tuple val(model), val(temperature), path("c*.mdl"), path("*")
-
-    shell:
-    """
-    #!/usr/bin/env python
-    import subprocess
-    import parmed
-    import numpy as np
-
-    # This script uses tleap to build the single residue 
-    # CRD/TOP, but it could be extended to take these
-    # As arguments.  
-
-    # If you are going to have ionic elements in the solvent
-    # special care needs to be taken to
-    # Ensure parameters for ions are sourced correctly!
-
-    TLEAP_SCRPT = '''#!/bin/bash
-    cat > "${model}".tleap <<EOF
-    source leaprc.water.${model}
-
-    # Create a system with one residue of OPC water
-    mol = sequence { WAT }
-
-    # Save the system to a parameter and coordinate file
-    saveAmberParm mol ${model}.prmtop ${model}.inpcrd
-
-    quit
-    EOF
-
-    tleap -f "${model}".tleap
-    '''
-
-    # Run the script in the current Bash environment
-    process = subprocess.run(['bash', '-c', TLEAP_SCRPT], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-    # Print the output
-    print("Output:", process.stdout)
-
-    # Print any errors
-    if process.stderr:
-        print("Errors:", process.stderr)
-
-    parm = parmed.amber.LoadParm("${model}.prmtop", xyz="${model}.inpcrd")
-
-    print(parm.bonds[1].atom1.type)
-    print(parm.bonds[1].atom2.type)
-    print(parm.bonds[1].type)
-    print(parm.LJ_types)
-    print(parm.LJ_radius)
-    # Create a list of indices
-    indices_list = list(range(len(parm.LJ_types)))
-    print(parm.LJ_depth)
-
-    for LJ_params in zip(parm.LJ_types,parm.LJ_radius,parm.LJ_depth):
-
-        if (LJ_params[1]==0):
-            print("embedding", LJ_params, " radius")
-            print(LJ_params[0])
-            my_type = LJ_params[0]
-
-            matching_bond = next((bond for bond in parm.bonds \
-            if (bond.atom1.type == my_type and bond.atom2.type != my_type) \
-            or (bond.atom2.type == my_type and bond.atom1.type != my_type)), None)
-            bondLength = matching_bond.type.req
-            print("bondLength",bondLength)
-
-            other_atom_type = matching_bond.atom2.type if \
-            matching_bond.atom1.type == my_type else matching_bond.atom1.type \
-            if matching_bond.atom2.type == my_type else None
-
-            other_radius = parm.LJ_radius[parm.LJ_types[other_atom_type]-1]
-            other_sigma = other_radius*(2 ** (-1/6))
-            new_sigma = other_sigma - bondLength
-            parm.LJ_radius[parm.LJ_types[my_type]-1]= new_sigma/(2 ** (-1/6))
-        if (LJ_params[2]==0):
-            print("embedding", LJ_params, " depth")
-            my_type = LJ_params[0]
-
-            matching_bond = next((bond for bond in parm.bonds \
-            if (bond.atom1.type == my_type and bond.atom2.type != my_type) \
-            or (bond.atom2.type == my_type and bond.atom1.type != my_type)), None)
-            bondLength = matching_bond.type.req
-            print("bondLength",bondLength)
-
-            other_atom_type = matching_bond.atom2.type if \
-            matching_bond.atom1.type == my_type else matching_bond.atom1.type \
-            if matching_bond.atom2.type == my_type else None
-
-            other_depth = parm.LJ_depth[parm.LJ_types[other_atom_type]-1]
-            new_depth = other_depth * 0.1
-            parm.LJ_depth[parm.LJ_types[my_type]-1]= new_depth
-    print(parm.LJ_radius)
-    print(parm.LJ_depth)
-
-    parm.recalculate_LJ()
-    parm.write_parm("c{}.prmtop".format("${model}".upper()))
-
-    print(parm.pointers)
-    print(parm.ptr)
-    print(parm._AMBERPARM_ATTRS)
-    print(dir(parm))
-
-    get_name = lambda ltype: next(atom.name for atom in parm.atoms if atom.type == ltype)
-    get_mass = lambda ltype: next(atom.mass for atom in parm.atoms if atom.type == ltype)
-    get_charge = lambda ltype: next(atom.charge for atom in parm.atoms if atom.type == ltype)
-    get_multi = lambda ltype: sum(1 for atom in parm.atoms if atom.type == ltype)
-    #get_coords = lambda ltype: next(atom.charge for atom in parm.atoms if atom.type == ltype)
-
-    print(parm.parm_data['TITLE'])
-    emptyMDL = parmed.amber.AmberFormat()
-    emptyMDL.charge_flag="CHG"
-    #emptyMDL.add_flag(flag_name='TITLE',flag_format=str(parm.formats['TITLE']),data=parm.parm_data['TITLE'])
-    emptyMDL.add_flag(flag_name='TITLE',flag_format=str(parm.formats['TITLE']),data=parm.parm_data['TITLE'])
-    emptyMDL.add_flag(flag_name='POINTERS',flag_format=str(parm.formats['POINTERS']),data=[parm.pointers['NATOM'],parm.pointers['NTYPES']])
-    emptyMDL.add_flag(flag_name='ATMTYP',flag_format=str(parm.formats['ATOM_TYPE_INDEX']),data=[value for value in parm.LJ_types.values()])
-    emptyMDL.add_flag(flag_name='ATMNAME',flag_format=str(parm.formats['TITLE']),data=[get_name(ltype) for ltype in parm.LJ_types.keys()])
-    emptyMDL.add_flag(flag_name='MASS',flag_format=str(parm.formats['RADII']),data=[get_mass(ltype) for ltype in parm.LJ_types.keys()])
-    emptyMDL.add_flag(flag_name='CHG',flag_format=str(parm.formats['RADII']),data=[get_charge(ltype) for ltype in parm.LJ_types.keys()])
-    emptyMDL.add_flag(flag_name='LJEPSILON',flag_format=str(parm.formats['RADII']),data=[parm.LJ_depth[value-1] for value in parm.LJ_types.values()])
-    emptyMDL.add_flag(flag_name='LJSIGMA',flag_format=str(parm.formats['RADII']),data=[parm.LJ_radius[value-1] for value in parm.LJ_types.values()])
-    emptyMDL.add_flag(flag_name='MULTI',flag_format=str(parm.formats['POINTERS']),data=[get_multi(ltype) for ltype in parm.LJ_types.keys()])
-    emptyMDL.add_flag(flag_name='COORD',flag_format=str(parm.formats['RADII']),data=np.concatenate(list(np.array(item).flatten() for item in parm.get_coordinates())))
-
-    emptyMDL.write_parm("c{}.mdl".format("${model}".upper()))
-    quit()
-
-    """
-
-}
-
 workflow build_ligands {
     take:
     extract_database_ch
@@ -507,12 +310,12 @@ workflow build_solvents {
     //build_water_model(solv_temp_pairs) 
     //build_solvent
     build_water_parameters(solv_temp_pairs)
-    //build_water_coordinates(solv_temp_pairs)
-    /**
+    | build_solvent
+    
     emit:
     xvv = build_solvent.out.paths.flatten().filter { file -> file.name.endsWith("xvv") }
     model = build_solvent.out.model
     temperature = build_solvent.out.temperature
     solvent = build_solvent.out.solvent
-    */
+    
 }
