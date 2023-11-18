@@ -87,7 +87,7 @@ log.info """\
         // Channel holds the indices to sample.
         // In future, will use ML to determine which samples along with parameters
         // In an iterative loop.
-        Channel.of(0..1)
+        Channel.of(0..641)
                 | buffer(size: 642, remainder: true)
                 | extract_database_deepchem 
                 | flatten 
