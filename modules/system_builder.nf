@@ -231,7 +231,7 @@ process build_solvent {
         NR=16384, DR=0.025,                    !Grid
         OUTLIST='xCGT', rout=0,                !Output
         mdiis_nvec=20, mdiis_del=0.3, tolerance=1.e-12,       !MDIIS
-        KSAVE={NUMSTEPS}, KOUT=1, maxstep={NUMSTEPS},       !Check pointing and iterations
+        KSAVE={NUMSTEPS}, KOUT=0, maxstep={NUMSTEPS},       !Check pointing and iterations
         SMEAR=1, ADBCOR=0.5,                   !Electrostatics
         TEMPERATURE={temp}, DIEps={diel},      !bulk solvent properties
         NSP=1,
