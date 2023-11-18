@@ -2,7 +2,7 @@
 # Job name
 #SBATCH --job-name NXTFLW
 # Submit to the gpu QoS, the requeue QoS can also be used for gpu's 
-#SBATCH -q primary
+#SBATCH -q secondary
 # Request one node
 #SBATCH -N 1
 # Total number of cores, in this example it will 1 node with 1 core each.
