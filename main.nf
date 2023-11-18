@@ -75,7 +75,7 @@ log.info """\
          .stripIndent()
 
     if ( params.database ){
-
+        //waterModels = ["spce-1.0.0.offxml","tip3p_fb-1.1.1.offxml"]
         waterModels = ["tip3p_fb-1.1.1.offxml","tip3p-1.0.1.offxml","opc3-1.0.1.offxml","spce-1.0.0.offxml"]
         temperatures = ["298.15"]
         waterChannel = Channel.from( waterModels )
