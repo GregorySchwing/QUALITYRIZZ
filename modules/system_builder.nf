@@ -234,7 +234,7 @@ process build_solvent {
         SMEAR=1, ADBCOR=0.5,                   !Electrostatics
         TEMPERATURE={temp}, DIEps={diel},      !bulk solvent properties
         NSP=1,
-        entropicDecomp=0                       ! While debugging convergence
+        entropicDecomp=1                       ! While debugging convergence set 0
     /
         &SPECIES                               !SPC water
         DENSITY={conc}d0,

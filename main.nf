@@ -87,8 +87,6 @@ log.info """\
         // Channel holds the indices to sample.
         // In future, will use ML to determine which samples along with parameters
         // In an iterative loop.
-        /**
-        if (false){
         Channel.of(0..1)
                 | buffer(size: 642, remainder: true)
                 | extract_database_deepchem 
@@ -99,6 +97,5 @@ log.info """\
                 | rism_solvation
                 | collect
                 | analyze_solvation
-        }*/
     }
 }
