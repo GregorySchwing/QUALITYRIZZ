@@ -165,7 +165,8 @@ process build_solvent {
     path("${model}_${T}*.*"), emit: paths
     val(model), emit: model
     val(T), emit: temperature
-    tuple val(model), val(T), path("${model}_${T}_PSE3_*.xvv"), emit: solvent optional true
+    path("solvParams.json"), emit: solvParams
+    tuple val(model), val(T), path("${model}_${T}_HNC_*.xvv"), emit: solvent optional true
     shell:
     """
     #!/usr/bin/env python
@@ -254,7 +255,7 @@ process build_solvent {
     diel = dieps
     conc = conc
 
-    closure_list = ["KH", "PSE1", "PSE2", "PSE3"]
+    closure_list = ["KH", "PSE1", "PSE2", "PSE3","HNC"]
     RENAMECOMMAND = ""
     LASTRUN = ""
     for closure in closure_list:
