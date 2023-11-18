@@ -114,8 +114,10 @@ process build_water_parameters {
         return water_reference
 
     #print(smirnoff.get_available_force_fields())
-
-    water_interchange = ForceField("${model}").create_interchange(build_water().to_topology())
+    print("${model}")
+    water_interchange = ForceField("${model}").create_interchange(Molecule.from_mapped_smiles(
+        "[O:1]([H:2])[H:3]"
+    ).to_topology())
     OH_bond, HH_bond = water_interchange.collections['Constraints'].potentials.values()
 
     # Build correct water molecule
