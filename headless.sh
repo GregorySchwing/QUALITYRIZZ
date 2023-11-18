@@ -26,4 +26,6 @@ source activate nextflow
 module load singularity
 export NXF_EXECUTOR=slurm
 export NXF_OPTS="-Xms2G -Xmx8G" 
+export NXF_SINGULARITY_CACHEDIR=${HOME}/singularity_cache
+nf-core download . --compress none --container singularity --singularity-cache-only
 nextflow run -profile slurm . --param_name nextflow.config
