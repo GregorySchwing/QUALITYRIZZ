@@ -16,6 +16,7 @@ include { build_solvents } from './modules/system_builder'
 include { minimize_ligands } from './modules/minimizer'
 include { rism_solvation } from './modules/rism'
 include { analyze_solvation } from './modules/analysis'
+include { analyze_mobley_solvation } from './modules/analysis'
 
 
 // Function which prints help message text
@@ -75,6 +76,14 @@ log.info """\
          .stripIndent()
 
     if ( params.database ){
+
+        pathToDataBase = ""
+        if (params.database == "FreeSolv"){
+            pathToDataBase = "$projectDir/databases/FreeSolv/database.pickle"
+        }
+        database = Channel
+            .fromPath( pathToDataBase )
+
         //waterModels = ["spce-1.0.0.offxml","tip3p_fb-1.1.1.offxml"]
         waterModels = ["tip3p_fb-1.1.1.offxml","tip3p-1.0.1.offxml","opc3-1.0.1.offxml","spce-1.0.0.offxml"]
         temperatures = ["298.15"]
@@ -87,15 +96,19 @@ log.info """\
         // Channel holds the indices to sample.
         // In future, will use ML to determine which samples along with parameters
         // In an iterative loop.
-        Channel.of(0..641)
+        /**
+        Channel.of(0..2)
                 | buffer(size: 642, remainder: true)
                 | extract_database_deepchem 
+        */
+        results = extract_database(database)
                 | flatten 
                 | build_ligands 
                 | combine(build_solvents.out.solvent) 
                 | minimize_ligands
                 | rism_solvation
                 | collect
-                | analyze_solvation
+        analyze_mobley_solvation(results,database)
+                //| analyze_solvation
     }
 }
