@@ -132,18 +132,18 @@ process build_water_parameters {
     interchange.collections['Electrostatics'].potentials=water_interchange.collections['Electrostatics'].potentials
 
     # Tweak forcefield if you wish
-    if (False):
+    if (True):
         from openff.interchange.models import TopologyKey
         oxygen = TopologyKey(atom_indices=(0,))
         hydrogen = TopologyKey(atom_indices=(1,))
         oxygen_pot_key = interchange.collections['vdW'].key_map[oxygen]
         hydrogen_pot_key = interchange.collections['vdW'].key_map[hydrogen]
-        interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['sigma']= 1.0 * unit.angstrom
-        interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['sigma']= 1.1658 * unit.angstrom
-        interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['epsilon']= 0.01553 * unit.kilocalorie_per_mole
-        interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['sigma']= 3.1507 * unit.angstrom
-        interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['epsilon']= 0.01520 * unit.kilocalorie_per_mole
-
+        interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['sigma']= interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['sigma'] - 2*OH_bond.parameters['distance']
+        interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['epsilon']= interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['epsilon'] * 0.1
+        print("sigma_Hy",interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['sigma'])
+        print("epsilon_Hy",interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['epsilon'])
+        print("sigma_O",interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['sigma'])
+        print("epsilon_Oxy",interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['epsilon'])
 
 
     interchange.to_prmtop("water.prmtop")
