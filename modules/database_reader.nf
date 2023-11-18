@@ -30,14 +30,17 @@ process depickle {
     # Write the dictionary to the file in JSON format
     counter = 0
     for key in df.keys():
-        if counter > 20:
+        if counter > 2:
             break
         
         with open("{key}.json".format(key=key), 'w') as file:
             json.dump(df[key], file)
         
         counter = counter + 1
-
+    with open("mobley_7608462.json".format(key=key), 'w') as file:
+        json.dump(df["mobley_7608462"], file)
+    
+    counter = counter + 1
     """
 }
 
