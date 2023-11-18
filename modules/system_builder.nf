@@ -68,7 +68,7 @@ process build_water_parameters {
     container "${params.container__openff_toolkit}"
     publishDir "${params.output_folder}/${params.database}/water_parameters/${model}", mode: 'copy', overwrite: true
 
-    debug false
+    debug true
     input:
     tuple val(model), val(temperature)
     output:
@@ -96,7 +96,8 @@ process build_water_parameters {
 
         # Add ideal TIP5P geometry
         bond_length = Quantity(OH_bond_length, unit.angstrom)
-        theta = Quantity(calc_theta(OH_bond_length,HH_bond_length), unit.degree).to(unit.radian)
+        print("theta",calc_theta(HH_bond_length,OH_bond_length))
+        theta = Quantity(calc_theta(HH_bond_length,OH_bond_length), unit.degree).to(unit.radian)
         water_reference.add_conformer(
             bond_length
             * Quantity(
@@ -116,7 +117,7 @@ process build_water_parameters {
     OH_bond, HH_bond = water_interchange.collections['Constraints'].get_force_field_parameters()
 
     # Build correct water molecule
-    water_reference = build_water(OH_bond[0],HH_bond[0])
+    water_reference = build_water(OH_bond.parameters['distance'],HH_bond.parameters['distance'])
 
     # Scaffold interchange, with bond information needed to construct water
     interchange = ForceField("openff-2.0.0.offxml").create_interchange(water_reference.to_topology())
@@ -142,7 +143,7 @@ process build_water_parameters {
 
 
     interchange.to_prmtop("water.prmtop")
-    interchange.to_inpcrd("water.inpcrd")
+    interchange.to_inpcrd("water.crd")
 
     """
 }

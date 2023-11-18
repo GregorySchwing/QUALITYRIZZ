@@ -3,3 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - openff-toolkit=0.14.4
+  - gxx_linux-64
+  - pip
+  - pip:
+    - "git+https://github.com/GregorySchwing/ParmEd.git@1drism"
