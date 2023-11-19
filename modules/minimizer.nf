@@ -70,9 +70,12 @@ process minimize_ligand {
     addBoxCommand = "ChBox -c {rst7File} -X 50 -Y 50 -Z 50 -o {rstWBox}".format(rst7File=output_n_min_rst_file\
                                                                                 ,rstWBox=rst7_w_box_file)
     import subprocess
+    process = subprocess.run(['bash', '-c', input_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     # Run the Bash script using subprocess
-    completed_process = subprocess.run(addBoxCommand, shell=True, executable='/bin/bash', stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    # Breaks on HPC?
+    #completed_process = subprocess.run(addBoxCommand, shell=True, executable='/bin/bash', stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    completed_process = subprocess.run(['bash', '-c', addBoxCommand], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     # Check the exit code and capture the output
     exit_code = completed_process.returncode
