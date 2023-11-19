@@ -14,6 +14,7 @@ process solvation {
     path("*"), emit: all
     path("rism.log"), emit: log
     path("${molecule}_${model}_${temperature}.json"), emit: json
+    maxRetries 20
 
     script:
     """
