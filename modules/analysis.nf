@@ -128,6 +128,8 @@ process analyze_mobley {
 
     # Extract 'expt' from inner dictionaries and create a DataFrame with keys as indices
     result_df = pd.DataFrame({'expt': [inner_dict['expt'] for inner_dict in database.values()]}, index=database.keys()).rename_axis('molecule')
+    #from openff.toolkit import ForceField, Molecule, Topology
+    #openff_mol = Molecule.from_smiles(smiles,allow_undefined_stereo=True)
 
     # Assuming the list of file paths is provided
     file_ids = "${ids}".split(" ")
@@ -158,12 +160,13 @@ process analyze_mobley {
     plt.figure(figsize=(10, 6))
     # Plotting
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(result_df['expt'], result_df['expt'], label="Reference")
+    ax.plot(result_df['expt'], result_df['expt'], label="Reference", color="black",linewidth=2.0)
 
     models = []
     r2_values = []
     mad_values = []
-    for col in result_df.columns[1:]:
+    markers = ['+', 'x', '.', '1']
+    for col, marker in zip(result_df.columns[1:],markers):
         # Calculate the Pearson correlation coefficient
         correlation_coefficient, _ = pearsonr(result_df[col], result_df["expt"])
         print(col,"R=",correlation_coefficient, _)
@@ -173,7 +176,7 @@ process analyze_mobley {
         r2_values.append(correlation_coefficient)
         mad_values.append(mad)
 
-        ax.scatter(result_df['expt'], result_df[col], label=col)
+        ax.scatter(result_df['expt'], result_df[col], label=col, marker=marker)
         # Calculate and plot a linear trendline
         trendline = np.polyfit(result_df["expt"], result_df[col], 1)
         plt.plot(result_df["expt"], np.polyval(trendline, result_df["expt"]), label=col)
