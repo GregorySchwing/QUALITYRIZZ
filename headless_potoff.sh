@@ -15,9 +15,11 @@ source "${HOME}/mambaforge/etc/profile.d/mamba.sh"
 # Contains nextflow and singularity
 source activate nextflow
 export NXF_EXECUTOR=slurm
-export NXF_OPTS="-Xms2G -Xmx8G" 
+export NXF_OPTS="-Xms6G -Xmx8G" 
 mkdir -p ${HOME}/singularity_cache
 export NXF_SINGULARITY_CACHEDIR=${HOME}/singularity_cache
 mkdir -p ${HOME}/xdr
 export XDG_RUNTIME_DIR=${HOME}/xdr
-nextflow run -profile potoff . --param_name nextflow.config
+mkdir -p ${HOME}/tmpnf
+export SINGULARITY_TMPDIR=${HOME}/tmpnf
+nextflow run -profile potoff . --param_name nextflow.config -resume
