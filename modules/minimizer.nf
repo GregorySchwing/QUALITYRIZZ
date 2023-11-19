@@ -70,7 +70,6 @@ process minimize_ligand {
     addBoxCommand = "ChBox -c {rst7File} -X 50 -Y 50 -Z 50 -o {rstWBox}".format(rst7File=output_n_min_rst_file\
                                                                                 ,rstWBox=rst7_w_box_file)
     import subprocess
-    process = subprocess.run(['bash', '-c', input_string], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     # Run the Bash script using subprocess
     # Breaks on HPC?
