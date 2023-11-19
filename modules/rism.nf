@@ -11,8 +11,8 @@ process solvation {
     input:
     tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv), path(pdb), path(rst)
     output:
-    path("*"), emit: all
-    path("rism.log"), emit: log
+    //path("*"), emit: all
+    //path("rism.log"), emit: log
     path("${molecule}_${model}_${temperature}.json"), emit: json
     maxRetries 20
 

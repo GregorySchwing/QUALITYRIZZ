@@ -11,7 +11,7 @@ process minimize_ligand {
     input:
     tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv) 
     output:
-    path("sander.*"), emit: paths
+    //path("sander.*"), emit: paths
     tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv), path("sander.n_min.pdb"), path("sander.n_min.rst7"), emit: minimized_system
     maxRetries 20
     script:

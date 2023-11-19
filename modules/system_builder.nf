@@ -11,9 +11,9 @@ process build_ligand {
     input:
     path pathToJson
     output:
-    val(pathToJson.baseName), emit: molecule
-    path("ligand.prmtop"), emit: prm
-    path("ligand.inpcrd"), emit: crd
+    //val(pathToJson.baseName), emit: molecule
+    //path("ligand.prmtop"), emit: prm
+    //path("ligand.inpcrd"), emit: crd
     tuple val(pathToJson.baseName), path("ligand.prmtop"), path("ligand.inpcrd"), emit: system
     script:
     """
@@ -162,10 +162,10 @@ process build_solvent {
     input:
     tuple val(model), val(T), path(mdl)
     output:
-    path("${model}_${T}*.*"), emit: paths
-    val(model), emit: model
-    val(T), emit: temperature
-    path("solvParams.json"), emit: solvParams
+    //path("${model}_${T}*.*"), emit: paths
+    //val(model), emit: model
+    //val(T), emit: temperature
+    //path("solvParams.json"), emit: solvParams
     tuple val(model), val(T), path("${model}_${T}_HNC_*.xvv"), emit: solvent optional true
     shell:
     """
@@ -299,10 +299,10 @@ process build_solvent_no_boot {
     input:
     tuple val(model), val(T), path(mdl)
     output:
-    path("${model}_${T}*.*"), emit: paths
-    val(model), emit: model
-    val(T), emit: temperature
-    path("solvParams.json"), emit: solvParams
+    //path("${model}_${T}*.*"), emit: paths
+    //val(model), emit: model
+    //val(T), emit: temperature
+    //path("solvParams.json"), emit: solvParams
     tuple val(model), val(T), path("${model}_${T}.xvv"), emit: solvent
     shell:
 
@@ -433,9 +433,9 @@ workflow build_solvents {
     | build_solvent
     
     emit:
-    xvv = build_solvent.out.paths.flatten().filter { file -> file.name.endsWith("xvv") }
-    model = build_solvent.out.model
-    temperature = build_solvent.out.temperature
+    //xvv = build_solvent.out.paths.flatten().filter { file -> file.name.endsWith("xvv") }
+    //model = build_solvent.out.model
+    //temperature = build_solvent.out.temperature
     solvent = build_solvent.out.solvent
     
 }

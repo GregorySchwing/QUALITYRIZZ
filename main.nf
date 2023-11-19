@@ -90,7 +90,7 @@ log.info """\
         waterChannel = Channel.from( waterModels )
         temperatureChannel = Channel.from( temperatures )
         solventChannel = waterChannel.combine(temperatureChannel)
-        solventChannel.view()
+        //solventChannel.view()
         build_solvents(solventChannel) 
                 //| combine(temperatureChannel)
         // Channel holds the indices to sample.
