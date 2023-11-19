@@ -112,7 +112,7 @@ process analyze_mobley {
         path(ids)
         path(pathToDatabase)
     output:
-        path("results.*")
+        path("*")
     script:
     """
     #!/usr/bin/env python
@@ -142,6 +142,8 @@ process analyze_mobley {
         # Extract relevant information
         molecule = data["molecule"]
         solvent = data["solvent"]
+        if (solvent == 'tip3p_fb-1.1.1.offxml'):
+            solvent = 'tip3p-fb-1.1.1.offxml'
         pc_dg_solv = data["PC+dG*(solv)(kcal/mol)"]
 
         # Append the data to the result DataFrame
@@ -165,6 +167,8 @@ process analyze_mobley {
     models = []
     r2_values = []
     mad_values = []
+    mrd_values = []
+
     markers = ['+', 'x', '.', '1']
     for col, marker in zip(result_df.columns[1:],markers):
         # Calculate the Pearson correlation coefficient
@@ -175,19 +179,22 @@ process analyze_mobley {
         models.append(col)
         r2_values.append(correlation_coefficient)
         mad_values.append(mad)
-
+        # Calculate Mean Absolute Deviation
+        mrd = np.mean(result_df[col]-result_df["tip3p-1.0.1.offxml"])
+        mrd_values.append(mrd)
         ax.scatter(result_df['expt'], result_df[col], label=col, marker=marker)
         # Calculate and plot a linear trendline
         trendline = np.polyfit(result_df["expt"], result_df[col], 1)
         plt.plot(result_df["expt"], np.polyval(trendline, result_df["expt"]), label=col)
 
     # Creating DataFrame
-    data = {'R2': r2_values, 'MAD' : mad_values}
+    data = {'R2': r2_values, 'MAD' : mad_values, 'MRD' : mrd_values}
     stats = pd.DataFrame(data, index=models)
-
+    stats = stats.round(3)
     # Displaying the DataFrame
+    stats = stats.sort_values(by='MRD', ascending=False)
     print(stats)
-    stats.to_csv("stats.csv")
+    stats.to_csv("stats.csv", index_label='Model')
 
 
     plt.xlabel("expt (ΔGsolv)(kcal/mol)", fontsize=20)
