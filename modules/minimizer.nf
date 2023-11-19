@@ -12,8 +12,7 @@ process minimize_ligand {
     tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv) 
     output:
     path("sander.*"), emit: paths
-    tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv),
-    path("sander.n_min.box.pdb"), path("sander.n_min.box.rst7"), emit: minimized_system
+    tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv), path("sander.n_min.pdb"), path("sander.n_min.rst7"), emit: minimized_system
 
     script:
     """
@@ -65,42 +64,39 @@ process minimize_ligand {
                 output_dat_path=output_n_min_dat_file,
                 properties=prop)
 
-
-    rst7_w_box_file = 'sander.n_min.box.rst7'
-    addBoxCommand = "ChBox -c {rst7File} -X 50 -Y 50 -Z 50 -o {rstWBox}".format(rst7File=output_n_min_rst_file\
-                                                                                ,rstWBox=rst7_w_box_file)
-    import subprocess
-
-    # Run the Bash script using subprocess
-    # Breaks on HPC?
-    #completed_process = subprocess.run(addBoxCommand, shell=True, executable='/bin/bash', stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    completed_process = subprocess.run(['bash', '-c', addBoxCommand], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-    # Check the exit code and capture the output
-    exit_code = completed_process.returncode
-    if (exit_code != 0):
-        output = completed_process.stdout
-        error_output = completed_process.stderr
-
-        # Print the results
-        print(f"Exit code: {exit_code}")
-        print("Output:")
-        print(output)
-        print("Error Output:")
-        print(error_output)
-
     from biobb_amber.ambpdb.amber_to_pdb import amber_to_pdb
-    output_n_min_pdb_file = "sander.n_min.box.pdb"
+    output_n_min_pdb_file = "sander.n_min.pdb"
     prop = {
         'remove_tmp': True,
         'check_extensions' : False,
     }
     amber_to_pdb(input_top_path="${prm}",
-                input_crd_path=rst7_w_box_file,
+                input_crd_path=output_n_min_rst_file,
                 output_pdb_path=output_n_min_pdb_file,
                 properties=prop)
     """
 }
+
+
+process add_box {
+    container "${params.container__biobb_amber}"
+    publishDir "${params.output_folder}/${params.database}/minimizations/${molecule}_${model}_${temperature}", mode: 'copy', overwrite: false
+
+    debug false
+    input:
+    tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv), path(pdb), path(rst)
+    output:
+    tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv), path(pdb), path("sander.n_min.box.rst7"), emit: minimized_system
+
+
+    shell:
+    """
+    ChBox -c ${rst} -X 50 -Y 50 -Z 50 -o sander.n_min.box.rst7
+    """
+}
+
+
+
 
 workflow minimize_ligands {
     take:
@@ -108,6 +104,8 @@ workflow minimize_ligands {
     main:
     // Process each JSON file asynchronously
     minimize_ligand(all)
+    add_box(minimize_ligand.out.minimized_system)
     emit:
-    minimized_system = minimize_ligand.out.minimized_system
+    minimized_system = add_box.out.minimized_system
+
 }
