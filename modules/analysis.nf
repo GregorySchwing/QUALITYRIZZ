@@ -181,7 +181,10 @@ process analyze_mobley {
     # Convert all columns to numeric
     result_df = result_df.apply(pd.to_numeric, errors='coerce')
 
-
+    normalize = False
+    if (normalize):
+        result_df = (result_df - result_df.min()) / (result_df.max() - result_df.min())
+        
     result_df.to_csv("results.csv")
 
 
