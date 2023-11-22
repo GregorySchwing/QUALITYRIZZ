@@ -26,6 +26,12 @@ Usage:
 
 nextflow run [-profile local/docker/singularity/slurm] . [--database /Path/To/CSV --reference_col expt]
 
+# FreeSolv
+nextflow run . -profile docker
+
+# User defined database
+nextflow run . -profile docker --database USER --database_path databases/PFAS/PFAS_MAP_INPUT.csv --id_col NAME --structure_col SMILES --reference_col PROPERTY
+
 Required Arguments:
 
   Input Data:
