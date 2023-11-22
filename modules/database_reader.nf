@@ -63,7 +63,7 @@ process toJson {
     from scipy.stats import pearsonr  # Import the pearsonr function
     print(f"Python Version: {sys.version}")
     # Use the pandas read_pickle function to read the DataFrame.
-    data = '{$pathToDatabase}'.replace('=', ':')
+    data = '{$pathToDatabase}'.replace('"=', '":')
     json_object = json.loads(data)
     print(json_object)
 

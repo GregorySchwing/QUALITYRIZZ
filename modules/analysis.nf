@@ -124,12 +124,39 @@ process analyze_mobley {
 
     # Assuming the path to the database is specified
     path_to_database = "${pathToDatabase}"
-    database = pd.read_pickle(path_to_database)
+    json_data_list = []
+    # Assuming the list of file paths is provided
+    file_ids = "${pathToDatabase}".split(" ")
+    for file_path in file_ids:
+        # Read JSON file
+        with open(file_path, 'r') as json_file:
+            json_data = json.load(json_file)
+            json_data_list.append(json_data)
 
-    # Extract 'expt' from inner dictionaries and create a DataFrame with keys as indices
-    result_df = pd.DataFrame({'expt': [inner_dict['expt'] for inner_dict in database.values()]}, index=database.keys()).rename_axis('molecule')
-    #from openff.toolkit import ForceField, Molecule, Topology
-    #openff_mol = Molecule.from_smiles(smiles,allow_undefined_stereo=True)
+    print(json_data_list)
+    # Create an empty DataFrame
+    database = pd.DataFrame()
+
+    # Loop through each dictionary in the list
+    for data_dict in json_data_list:
+        # Extract the key (index) and value (column data)
+        index, column_data = next(iter(data_dict.items()))
+
+        # Create a DataFrame from the column data with the index as the first column
+        temp_df = pd.DataFrame(column_data, index=[index])
+
+        # Append the temporary DataFrame to the main DataFrame
+        database = pd.concat([database, temp_df])
+
+    # Rename the first column to 'expt'
+    database = database.rename(columns={database.columns[0]: 'expt'})
+    # Rename the index column to 'molecule'
+    database = database.rename_axis('molecule')
+    # Drop the 'SMILES' column
+    database = database.drop('SMILES', axis=1)
+
+    print(database)
+    result_df = database
 
     # Assuming the list of file paths is provided
     file_ids = "${ids}".split(" ")
@@ -145,17 +172,17 @@ process analyze_mobley {
         if (solvent == 'tip3p_fb-1.1.1.offxml'):
             solvent = 'tip3p-fb-1.1.1.offxml'
         pc_dg_solv = data["PC+dG*(solv)(kcal/mol)"]
-
         # Append the data to the result DataFrame
         # result_df = pd.concat([result_df, pd.DataFrame({"molecule": [molecule], "PC+dG*(solv)(kcal/mol)": [pc_dg_solv], "expt (solv)(kcal/mol)": [expt_solv]})], ignore_index=True)
         result_df.at[molecule, solvent] = pc_dg_solv
-
+    print(result_df)
     # Save the result DataFrame to a CSV file
     result_df = result_df.dropna()
+    # Convert all columns to numeric
+    result_df = result_df.apply(pd.to_numeric, errors='coerce')
 
     #result_df.set_index("molecule", inplace=True)
     result_df.to_csv("results.csv")
-
 
 
     # Create a scatter plot
@@ -180,19 +207,19 @@ process analyze_mobley {
         r2_values.append(correlation_coefficient)
         mad_values.append(mad)
         # Calculate Mean Absolute Deviation
-        mrd = np.mean(result_df[col]-result_df["tip3p-1.0.1.offxml"])
-        mrd_values.append(mrd)
+        #mrd = np.mean(result_df[col]-result_df["tip3p-1.0.1.offxml"])
+        #mrd_values.append(mrd)
         ax.scatter(result_df['expt'], result_df[col], label=col, marker=marker)
         # Calculate and plot a linear trendline
         trendline = np.polyfit(result_df["expt"], result_df[col], 1)
         plt.plot(result_df["expt"], np.polyval(trendline, result_df["expt"]), label=col)
-
     # Creating DataFrame
-    data = {'R2': r2_values, 'MAD' : mad_values, 'MRD' : mrd_values}
+    #data = {'R2': r2_values, 'MAD' : mad_values, 'MRD' : mrd_values}
+    data = {'R2': r2_values, 'MAD' : mad_values,}
     stats = pd.DataFrame(data, index=models)
     stats = stats.round(3)
     # Displaying the DataFrame
-    stats = stats.sort_values(by='MRD', ascending=False)
+    #stats = stats.sort_values(by='MRD', ascending=False)
     print(stats)
     stats.to_csv("stats.csv", index_label='Model')
 
@@ -215,7 +242,7 @@ process analyze_list_proc {
     debug true
     input:
         path(results)
-        val(database)
+        path(database)
     output:
         //path("*")
     script:
@@ -263,5 +290,5 @@ workflow analyze_list {
     solvation_results
     database
     main:
-    analyze_list_proc(solvation_results,database)
+    analyze_mobley(solvation_results,database)
 }

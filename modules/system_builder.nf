@@ -23,7 +23,8 @@ process build_ligand {
     with open("${pathToJson}", "r") as file:
         print("reading ${pathToJson}")
         data = json.load(file)
-    smiles=data["smiles"]
+    key=next(iter(data))
+    smiles=data[key]["SMILES"]
     # Imports from the toolkit
     from openff.toolkit import ForceField, Molecule, Topology
     from openff.units import Quantity, unit
@@ -471,12 +472,12 @@ workflow build_ligands {
     extract_database_ch
     main:
     // Process each JSON file asynchronously
-    build_ligand_list(extract_database_ch)
+    build_ligand(extract_database_ch)
     emit:
     //molecule = build_ligand.out.molecule
     //prm = build_ligand.out.prm
     //crd = build_ligand.out.crd
-    system = build_ligand_list.out.system
+    system = build_ligand.out.system
 }
 
 workflow build_solvents {
