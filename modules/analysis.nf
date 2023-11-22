@@ -188,16 +188,16 @@ process analyze_mobley {
     # Create a scatter plot
     plt.figure(figsize=(10, 6))
     # Plotting
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(result_df['expt'], result_df['expt'], label="Reference", color="black",linewidth=2.0)
+    plt.plot(result_df['expt'], result_df['expt'], label="Reference", color="black",linewidth=2.0)
 
     models = []
     r2_values = []
     mad_values = []
     mrd_values = []
 
-    markers = ['+', 'x', '.', '1']
-    for col, marker in zip(result_df.columns[1:],markers):
+    #markers = ['+', 'x', '.', '1']
+    filtered_columns = [col for col in result_df.columns if 'expt' not in col]
+    for col in filtered_columns:
         # Calculate the Pearson correlation coefficient
         correlation_coefficient, _ = pearsonr(result_df[col], result_df["expt"])
         print(col,"R=",correlation_coefficient, _)
@@ -207,9 +207,8 @@ process analyze_mobley {
         r2_values.append(correlation_coefficient)
         mad_values.append(mad)
         # Calculate Mean Absolute Deviation
-        #mrd = np.mean(result_df[col]-result_df["tip3p-1.0.1.offxml"])
-        #mrd_values.append(mrd)
-        ax.scatter(result_df['expt'], result_df[col], label=col, marker=marker)
+        print(result_df['expt'], result_df[col])
+        plt.scatter(result_df['expt'], result_df[col], label=col)
         # Calculate and plot a linear trendline
         trendline = np.polyfit(result_df["expt"], result_df[col], 1)
         plt.plot(result_df["expt"], np.polyval(trendline, result_df["expt"]), label=col)
@@ -226,7 +225,7 @@ process analyze_mobley {
 
     plt.xlabel("expt (ΔGsolv)(kcal/mol)", fontsize=20)
     plt.ylabel("PC+dG*(ΔGsolv)(kcal/mol)", fontsize=20)
-    ax.legend()
+    plt.legend()
     plt.grid(True)
 
     # Save the plot as a PNG file
