@@ -30,7 +30,9 @@ Required Arguments:
 
   Input Data:
   --database            Name of database to run (options: FreeSolv - Default, /Path/To/CSV (REQUIRED COLUMNS: NAME,SMILES,reference_col} )).
-  --reference_col       Column in user defined csv to compare with RISM-HFE (default expt).
+  --id_col              Column in user defined csv to use as unique keys (default compoundid).
+  --structure_col       Column in user defined csv to build ligands (default SMILES).
+  --reference_col       Column in user defined csv to compare with RISM-HFE (default experimentalvalue(kcal/mol)).
 
 Optional Arguments:
     --output_folder       Folder for output files (default $projectDir/results).
@@ -63,6 +65,8 @@ log.info """\
 =============================================================================
          output_folder          : ${params.output_folder}
          database               : ${params.database}
+         id_col                 : ${params.id_col}
+         structure_col          : ${params.structure_col}
          reference_col          : ${params.reference_col}
          """
          .stripIndent()
@@ -79,12 +83,15 @@ log.info """\
     if ( params.database ){
 
         pathToDataBase = ""
+        id_col = ""
+        structure_col = ""
         reference_col = ""
 
         if (params.database == "FreeSolv"){
-            pathToDataBase = "$projectDir/databases/FreeSolv/database.pickle"
+            pathToDataBase = "$projectDir/databases/FreeSolv/database.txt"
             database = Channel.fromPath( pathToDataBase )
         } else {
+            databaseName = params.database.split("\\.")[0].split(File.separator)[-1]
             pathToDataBase = params.database
             reference_col = params.reference_col
             c2 = Channel.fromPath( pathToDataBase ).splitCsv(header: true)
