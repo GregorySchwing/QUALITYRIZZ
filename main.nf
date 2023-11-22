@@ -76,6 +76,7 @@ log.info """\
          id_col                 : ${params.id_col}
          structure_col          : ${params.structure_col}
          reference_col          : ${params.reference_col}
+         samples                : ${params.samples}
          """
          .stripIndent()
 
@@ -99,7 +100,7 @@ log.info """\
         }
 
         input_dict2 = Channel.fromPath(params.database_path)
-            .splitCsv(header: true, limit: 2)
+            .splitCsv(header: true, limit: params.samples)
             .flatMap { row ->
                 def tumor_reads = ["\"${params.reference_col}\"":"\"${row."${params.reference_col}"}\"", 
                                         "\"${params.structure_col}\"":"\"${row."${params.structure_col}"}\""]
@@ -119,7 +120,6 @@ log.info """\
             | collect
 
         analyze_list(results,database.collect())
-                //| analyze_solvation*/
     } else {
         helpMessage()
     }
