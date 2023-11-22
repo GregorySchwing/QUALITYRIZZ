@@ -181,7 +181,7 @@ process analyze_mobley {
     # Convert all columns to numeric
     result_df = result_df.apply(pd.to_numeric, errors='coerce')
 
-    #result_df.set_index("molecule", inplace=True)
+
     result_df.to_csv("results.csv")
 
 
