@@ -29,7 +29,8 @@ nextflow run [-profile local/docker/singularity/slurm] . [--database /Path/To/CS
 Required Arguments:
 
   Input Data:
-  --database            Name of database to run (options: FreeSolv - Default, /Path/To/CSV (REQUIRED COLUMNS: NAME,SMILES,reference_col} )).
+  --database            Name of database to run (options: FreeSolv - Default, User).
+  --database_path       /Path/To/CSV.
   --id_col              Column in user defined csv to use as unique keys (default compoundid).
   --structure_col       Column in user defined csv to build ligands (default SMILES).
   --reference_col       Column in user defined csv to compare with RISM-HFE (default experimentalvalue(kcal/mol)).
@@ -65,6 +66,7 @@ log.info """\
 =============================================================================
          output_folder          : ${params.output_folder}
          database               : ${params.database}
+         database_path          : ${params.database_path}
          id_col                 : ${params.id_col}
          structure_col          : ${params.structure_col}
          reference_col          : ${params.reference_col}
@@ -82,24 +84,6 @@ log.info """\
 
     if ( params.database ){
 
-        pathToDataBase = ""
-        id_col = ""
-        structure_col = ""
-        reference_col = ""
-
-        if (params.database == "FreeSolv"){
-            pathToDataBase = "$projectDir/databases/FreeSolv/database.txt"
-            database = Channel.fromPath( pathToDataBase )
-        } else {
-            databaseName = params.database.split("\\.")[0].split(File.separator)[-1]
-            pathToDataBase = params.database
-            reference_col = params.reference_col
-            c2 = Channel.fromPath( pathToDataBase ).splitCsv(header: true)
-            c2.view { row -> "${row.NAME} - ${row.SMILES} - ${row."${reference_col}"}" }
-        }
-        return
-
-
         //waterModels = ["spce-1.0.0.offxml","tip3p_fb-1.1.1.offxml"]
         waterModels = ["tip3p_fb-1.1.1.offxml","tip3p-1.0.1.offxml","opc3-1.0.1.offxml","spce-1.0.0.offxml"]
         temperatures = ["298.15"]
@@ -108,15 +92,17 @@ log.info """\
         solventChannel = waterChannel.combine(temperatureChannel)
         solventChannel.view()
         build_solvents(solventChannel) 
-        results = extract_database(database)
-            | flatten
+        c2 = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: 10).map { 
+            row -> [row."${params.id_col}", row."${params.structure_col}"]
+            //row -> [row."${params.id_col}", row."${params.structure_col}", row."${params.reference_col}"]
+        }
             | build_ligands 
             | combine(build_solvents.out.solvent) 
             | minimize_ligands
             | rism_solvation
-            | collect
-        analyze_mobley_solvation(results,database)
-                //| analyze_solvation
+        //    | collect
+        //analyze_mobley_solvation(results,database)
+                //| analyze_solvation*/
     } else {
         helpMessage()
     }

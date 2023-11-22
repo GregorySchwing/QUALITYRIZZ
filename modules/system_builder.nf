@@ -13,8 +13,8 @@ process build_ligand {
     output:
     val(pathToJson.baseName), emit: molecule
     path("ligand.prmtop"), emit: prm
-    path("ligand.inpcrd"), emit: crd
-    tuple val(pathToJson.baseName), path("ligand.prmtop"), path("ligand.inpcrd"), emit: system
+    path("ligand.crd"), emit: crd
+    tuple val(pathToJson.baseName), path("ligand.prmtop"), path("ligand.crd"), emit: system
     script:
     """
     #!/usr/bin/env python
@@ -59,7 +59,65 @@ process build_ligand {
     )
 
     interchange.to_prmtop("ligand.prmtop")
-    interchange.to_inpcrd("ligand.inpcrd")
+    interchange.to_inpcrd("ligand.crd")
+    
+    """
+}
+
+
+process build_ligand_list {
+    container "${params.container__openff_toolkit}"
+    publishDir "${params.output_folder}/${params.database}/systems/${molecule}", mode: 'copy', overwrite: true
+
+    debug false
+    input:
+    tuple  val(molecule), val(SMILES)
+    output:
+    val(molecule), emit: molecule
+    path("ligand.prmtop"), emit: prm
+    path("ligand.crd"), emit: crd
+    tuple val(molecule), path("ligand.prmtop"), path("ligand.crd"), emit: system
+    script:
+    """
+    #!/usr/bin/env python
+
+    smiles="$SMILES"
+    # Imports from the toolkit
+    from openff.toolkit import ForceField, Molecule, Topology
+    from openff.units import Quantity, unit
+    from openff.interchange import Interchange
+
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+    from rdkit.Chem import rdmolfiles
+    def embed(mol, seed=None):
+        params = AllChem.ETKDGv2()
+        if seed is not None:
+            params.randomSeed = seed
+        else:
+            params.randomSeed = 123
+        AllChem.EmbedMolecule(mol, params)
+        return mol
+
+    forcefield = ForceField("openff-2.1.0.offxml")
+    openff_mol = Molecule.from_smiles(smiles,allow_undefined_stereo=True)
+    rdmol = openff_mol.to_rdkit()
+    rdmol3D = embed(rdmol,123)
+    # Create a PDB file
+    writer = rdmolfiles.MolToPDBFile(rdmol3D, "ligand.pdb")
+    # Load the topology from a PDB file and `Molecule` objects
+    topology = Topology.from_pdb(
+        "ligand.pdb",
+        unique_molecules=[openff_mol],
+    )
+
+    interchange = Interchange.from_smirnoff(
+        force_field=forcefield,
+        topology=topology,
+    )
+
+    interchange.to_prmtop("ligand.prmtop")
+    interchange.to_inpcrd("ligand.crd")
     
     """
 }
@@ -413,12 +471,12 @@ workflow build_ligands {
     extract_database_ch
     main:
     // Process each JSON file asynchronously
-    build_ligand(extract_database_ch)
+    build_ligand_list(extract_database_ch)
     emit:
     //molecule = build_ligand.out.molecule
     //prm = build_ligand.out.prm
     //crd = build_ligand.out.crd
-    system = build_ligand.out.system
+    system = build_ligand_list.out.system
 }
 
 workflow build_solvents {
