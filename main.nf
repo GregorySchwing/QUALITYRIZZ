@@ -24,12 +24,13 @@ def helpMessage() {
     log.info"""
 Usage:
 
-nextflow run -profile docker . --param_name nextflow.config
+nextflow run [-profile local/docker/singularity/slurm] . [--database /Path/To/CSV --reference_col expt]
 
 Required Arguments:
 
   Input Data:
-  --database            Name of database to run (default FreeSolv).
+  --database            Name of database to run (options: FreeSolv - Default, /Path/To/CSV (REQUIRED COLUMNS: NAME,SMILES,reference_col} )).
+  --reference_col       Column in user defined csv to compare with RISM-HFE (default expt).
 
 Optional Arguments:
     --output_folder       Folder for output files (default $projectDir/results).
@@ -39,15 +40,6 @@ Optional Arguments:
 
 // Main workflow
 workflow {
-
-    // Show help message if the user specifies the --help flag at runtime
-    // or if any required params are not provided
-    if ( params.help){
-        // Invoke the function above which prints the help message
-        helpMessage()
-        // Exit out and do not run anything else
-        exit 1
-    }
 
 def myString = """ 
 .----------------.  .----------------.  .----------------.  .----------------. 
@@ -71,18 +63,35 @@ log.info """\
 =============================================================================
          output_folder          : ${params.output_folder}
          database               : ${params.database}
-
+         reference_col          : ${params.reference_col}
          """
          .stripIndent()
+
+    // Show help message if the user specifies the --help flag at runtime
+    // or if any required params are not provided
+    if ( params.help || params.database == null){
+        // Invoke the function above which prints the help message
+        helpMessage()
+        // Exit out and do not run anything else
+        exit 1
+    }
 
     if ( params.database ){
 
         pathToDataBase = ""
+        reference_col = ""
+
         if (params.database == "FreeSolv"){
             pathToDataBase = "$projectDir/databases/FreeSolv/database.pickle"
+            database = Channel.fromPath( pathToDataBase )
+        } else {
+            pathToDataBase = params.database
+            reference_col = params.reference_col
+            c2 = Channel.fromPath( pathToDataBase ).splitCsv(header: true)
+            c2.view { row -> "${row.NAME} - ${row.SMILES} - ${row."${reference_col}"}" }
         }
-        database = Channel
-            .fromPath( pathToDataBase )
+        return
+
 
         //waterModels = ["spce-1.0.0.offxml","tip3p_fb-1.1.1.offxml"]
         waterModels = ["tip3p_fb-1.1.1.offxml","tip3p-1.0.1.offxml","opc3-1.0.1.offxml","spce-1.0.0.offxml"]
@@ -92,23 +101,16 @@ log.info """\
         solventChannel = waterChannel.combine(temperatureChannel)
         solventChannel.view()
         build_solvents(solventChannel) 
-                //| combine(temperatureChannel)
-        // Channel holds the indices to sample.
-        // In future, will use ML to determine which samples along with parameters
-        // In an iterative loop.
-        /**
-        Channel.of(0..2)
-                | buffer(size: 642, remainder: true)
-                | extract_database_deepchem 
-        */
         results = extract_database(database)
-                | flatten 
-                | build_ligands 
-                | combine(build_solvents.out.solvent) 
-                | minimize_ligands
-                | rism_solvation
-                | collect
+            | flatten
+            | build_ligands 
+            | combine(build_solvents.out.solvent) 
+            | minimize_ligands
+            | rism_solvation
+            | collect
         analyze_mobley_solvation(results,database)
                 //| analyze_solvation
+    } else {
+        helpMessage()
     }
 }
