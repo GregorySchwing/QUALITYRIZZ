@@ -207,6 +207,42 @@ process analyze_mobley {
     """
 }
 
+
+process analyze_list_proc {
+    container "${params.container__openff_toolkit}"
+    publishDir "${params.output_folder}/${params.database}/results", mode: 'copy', overwrite: false
+
+    debug true
+    input:
+        path(results)
+        val(database)
+    output:
+        //path("*")
+    script:
+    """
+    #!/usr/bin/env python
+    import json
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from scipy.stats import pearsonr  # Import the pearsonr function
+
+    result_dict = {}
+    current_key = None
+    
+    print($database)
+    return
+    # Convert the JSON-formatted string to a Python dictionary
+    result_dict = json.loads("$database")
+
+    # Print the resulting dictionary
+    print(result_dict)
+
+
+    """
+}
+
+
 workflow analyze_solvation {
     take:
     solvation_results
@@ -220,4 +256,12 @@ workflow analyze_mobley_solvation {
     database
     main:
     analyze_mobley(solvation_results,database)
+}
+
+workflow analyze_list {
+    take:
+    solvation_results
+    database
+    main:
+    analyze_list_proc(solvation_results,database)
 }

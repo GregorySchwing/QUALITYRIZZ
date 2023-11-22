@@ -71,7 +71,7 @@ process build_ligand_list {
 
     debug false
     input:
-    tuple  val(molecule), val(SMILES)
+    tuple  val(molecule), val(SMILES), val(reference)
     output:
     val(molecule), emit: molecule
     path("ligand.prmtop"), emit: prm

@@ -8,6 +8,7 @@ nextflow.enable.dsl=2
 // Import sub-workflows
 include { extract_database } from './modules/database_reader'
 include { extract_database_deepchem } from './modules/database_reader'
+include { extract_database_channel } from './modules/database_reader'
 
 
 include { build_ligands } from './modules/system_builder'
@@ -15,8 +16,7 @@ include { build_solvents } from './modules/system_builder'
 
 include { minimize_ligands } from './modules/minimizer'
 include { rism_solvation } from './modules/rism'
-include { analyze_solvation } from './modules/analysis'
-include { analyze_mobley_solvation } from './modules/analysis'
+include { analyze_list } from './modules/analysis'
 
 
 // Function which prints help message text
@@ -98,16 +98,55 @@ log.info """\
         solventChannel = waterChannel.combine(temperatureChannel)
         solventChannel.view()
         build_solvents(solventChannel) 
-        c2 = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: 10).map { 
-            row -> [row."${params.id_col}", row."${params.structure_col}"]
-            //row -> [row."${params.id_col}", row."${params.structure_col}", row."${params.reference_col}"]
+        input = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: 2).map { 
+            row -> [row."${params.id_col}", row."${params.structure_col}", row."${params.reference_col}"]
         }
-            | build_ligands 
+        
+        input_dict = Channel.fromPath(params.database_path)
+            .splitCsv(header: true, limit: 2)
+            .map { row ->
+                [
+                    "\"${row."${params.id_col}"}\"":
+                    [
+                        ["\"${params.structure_col}\"", "\"${row."${params.structure_col}"}\""],
+                        ["\"${params.reference_col}\"", "\"${row."${params.reference_col}"}\""]
+                    ]
+                ]
+            }
+        //input_dict.view()
+        /**
+        input_dict2 = Channel.fromPath(params.database_path)
+            .splitCsv(header: true, limit: 2)
+            .map { row ->
+                def tumor_reads = tuple( "\"${row."${params.structure_col}"}\"", "\"${row."${params.reference_col}"}\"" )
+                tuple("\"${row."${params.id_col}"}\"",tumor_reads)
+            }
+        */
+        /*
+        input_dict2 = Channel.fromPath(params.database_path)
+            .splitCsv(header: true, limit: 2)
+            .flatMap { row ->
+                def tumor_reads = tuple("\"${params.reference_col}\"":"\"${row."${params.reference_col}"}\"", 
+                                        "\"${params.structure_col}\"":"\"${row."${params.structure_col}"}\"")
+                tuple("\"${row."${params.id_col}"}\"",tumor_reads)
+            }
+        */
+        input_dict2 = Channel.fromPath(params.database_path)
+            .splitCsv(header: true, limit: 2)
+            .flatMap { row ->
+                def tumor_reads = ["\"${params.reference_col}\"":"\"${row."${params.reference_col}"}\"", 
+                                        "\"${params.structure_col}\"":"\"${row."${params.structure_col}"}\""]
+                ["\"${row."${params.id_col}"}\"":tumor_reads]
+            }
+        extract_database_channel(input_dict2)
+        return
+        results= build_ligands(input)
             | combine(build_solvents.out.solvent) 
             | minimize_ligands
             | rism_solvation
-        //    | collect
-        //analyze_mobley_solvation(results,database)
+            | collect
+
+        analyze_list(results,input_dict2)
                 //| analyze_solvation*/
     } else {
         helpMessage()

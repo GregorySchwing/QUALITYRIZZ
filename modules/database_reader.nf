@@ -42,6 +42,39 @@ process depickle {
 }
 
 
+process toJson {
+    container "${params.container__openff_toolkit}"
+    publishDir "${params.output_folder}/${params.database}/json", mode: 'copy', overwrite: true
+
+    debug false
+    input:
+    val pathToDatabase
+    
+    output:
+    path('*.json'), emit: json
+
+    script:
+    """
+    #!/usr/bin/env python
+    import pickle
+    import sys
+    import json
+    import pandas as pd
+    from scipy.stats import pearsonr  # Import the pearsonr function
+    print(f"Python Version: {sys.version}")
+    # Use the pandas read_pickle function to read the DataFrame.
+    data = '{$pathToDatabase}'.replace('=', ':')
+    json_object = json.loads(data)
+    print(json_object)
+
+    json_filename="{key}.json".format(key=next(iter(json_object)))
+    # Write the dictionary to a JSON file
+    with open(json_filename, 'w') as json_file:
+        json.dump(json_object, json_file, indent=2)
+    """
+}
+
+
 process sample_deepchem {
     container "${params.container__deep_chem}"
     //publishDir "${params.output_folder}/${params.database}/json", mode: 'copy', overwrite: true
@@ -88,4 +121,13 @@ workflow extract_database_deepchem{
     emit:
     json = sample_deepchem.out.json
 
+}
+
+workflow extract_database_channel {
+    take:
+    database_pickle_ch
+    main:
+    toJson(database_pickle_ch) 
+    emit:
+    json = toJson.out.json
 }
