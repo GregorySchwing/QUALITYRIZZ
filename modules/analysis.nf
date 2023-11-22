@@ -149,7 +149,7 @@ process analyze_mobley {
         database = pd.concat([database, temp_df])
 
     # Rename the first column to 'expt'
-    database = database.rename(columns={database.columns[0]: 'expt'})
+    #database = database.rename(columns={database.columns[0]: 'expt'})
     # Rename the index column to 'molecule'
     database = database.rename_axis('molecule')
     # Drop the 'SMILES' column
@@ -184,14 +184,14 @@ process analyze_mobley {
     normalize = False
     if (normalize):
         result_df = (result_df - result_df.min()) / (result_df.max() - result_df.min())
-        
+
     result_df.to_csv("results.csv")
 
 
     # Create a scatter plot
     plt.figure(figsize=(10, 6))
     # Plotting
-    plt.plot(result_df['expt'], result_df['expt'], label="Reference", color="black",linewidth=2.0)
+    plt.plot(result_df["${params.reference_col}"], result_df["${params.reference_col}"], label="Reference", color="black",linewidth=2.0)
 
     models = []
     r2_values = []
@@ -199,22 +199,22 @@ process analyze_mobley {
     mrd_values = []
 
     #markers = ['+', 'x', '.', '1']
-    filtered_columns = [col for col in result_df.columns if 'expt' not in col]
+    filtered_columns = [col for col in result_df.columns if "${params.reference_col}" not in col]
     for col in filtered_columns:
         # Calculate the Pearson correlation coefficient
-        correlation_coefficient, _ = pearsonr(result_df[col], result_df["expt"])
+        correlation_coefficient, _ = pearsonr(result_df[col], result_df["${params.reference_col}"])
         print(col,"R=",correlation_coefficient, _)
         # Calculate Mean Absolute Deviation
-        mad = np.mean(np.abs(result_df[col]-result_df["expt"]))
+        mad = np.mean(np.abs(result_df[col]-result_df["${params.reference_col}"]))
         models.append(col)
         r2_values.append(correlation_coefficient)
         mad_values.append(mad)
         # Calculate Mean Absolute Deviation
-        print(result_df['expt'], result_df[col])
-        plt.scatter(result_df['expt'], result_df[col], label=col)
+        print(result_df["${params.reference_col}"], result_df[col])
+        plt.scatter(result_df["${params.reference_col}"], result_df[col], label=col)
         # Calculate and plot a linear trendline
-        trendline = np.polyfit(result_df["expt"], result_df[col], 1)
-        plt.plot(result_df["expt"], np.polyval(trendline, result_df["expt"]), label=col)
+        trendline = np.polyfit(result_df["${params.reference_col}"], result_df[col], 1)
+        plt.plot(result_df["${params.reference_col}"], np.polyval(trendline, result_df["${params.reference_col}"]), label=col)
     # Creating DataFrame
     #data = {'R2': r2_values, 'MAD' : mad_values, 'MRD' : mrd_values}
     data = {'R2': r2_values, 'MAD' : mad_values,}
@@ -226,7 +226,7 @@ process analyze_mobley {
     stats.to_csv("stats.csv", index_label='Model')
 
 
-    plt.xlabel("expt (ΔGsolv)(kcal/mol)", fontsize=20)
+    plt.xlabel("${params.reference_col}", fontsize=20)
     plt.ylabel("PC+dG*(ΔGsolv)(kcal/mol)", fontsize=20)
     plt.legend()
     plt.grid(True)
