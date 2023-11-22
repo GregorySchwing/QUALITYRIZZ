@@ -90,47 +90,14 @@ log.info """\
 
     if ( params.database ){
 
-        //waterModels = ["spce-1.0.0.offxml","tip3p_fb-1.1.1.offxml"]
+        //waterModels = ["tip3p_fb-1.1.1.offxml"]
         waterModels = ["tip3p_fb-1.1.1.offxml","tip3p-1.0.1.offxml","opc3-1.0.1.offxml","spce-1.0.0.offxml"]
         temperatures = ["298.15"]
-        waterChannel = Channel.from( waterModels )
-        temperatureChannel = Channel.from( temperatures )
-        solventChannel = waterChannel.combine(temperatureChannel)
-        solventChannel.view()
-        build_solvents(solventChannel) 
+
         input = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: 2).map { 
             row -> [row."${params.id_col}", row."${params.structure_col}", row."${params.reference_col}"]
         }
-        
-        input_dict = Channel.fromPath(params.database_path)
-            .splitCsv(header: true, limit: 2)
-            .map { row ->
-                [
-                    "\"${row."${params.id_col}"}\"":
-                    [
-                        ["\"${params.structure_col}\"", "\"${row."${params.structure_col}"}\""],
-                        ["\"${params.reference_col}\"", "\"${row."${params.reference_col}"}\""]
-                    ]
-                ]
-            }
-        //input_dict.view()
-        /**
-        input_dict2 = Channel.fromPath(params.database_path)
-            .splitCsv(header: true, limit: 2)
-            .map { row ->
-                def tumor_reads = tuple( "\"${row."${params.structure_col}"}\"", "\"${row."${params.reference_col}"}\"" )
-                tuple("\"${row."${params.id_col}"}\"",tumor_reads)
-            }
-        */
-        /*
-        input_dict2 = Channel.fromPath(params.database_path)
-            .splitCsv(header: true, limit: 2)
-            .flatMap { row ->
-                def tumor_reads = tuple("\"${params.reference_col}\"":"\"${row."${params.reference_col}"}\"", 
-                                        "\"${params.structure_col}\"":"\"${row."${params.structure_col}"}\"")
-                tuple("\"${row."${params.id_col}"}\"",tumor_reads)
-            }
-        */
+
         input_dict2 = Channel.fromPath(params.database_path)
             .splitCsv(header: true, limit: 2)
             .flatMap { row ->
@@ -138,15 +105,20 @@ log.info """\
                                         "\"${params.structure_col}\"":"\"${row."${params.structure_col}"}\""]
                 ["\"${row."${params.id_col}"}\"":tumor_reads]
             }
-        extract_database_channel(input_dict2)
-        return
-        results= build_ligands(input)
+
+        waterChannel = Channel.from( waterModels )
+        temperatureChannel = Channel.from( temperatures )
+        solventChannel = waterChannel.combine(temperatureChannel)
+        solventChannel.view()
+        build_solvents(solventChannel) 
+        database=extract_database_channel(input_dict2)
+        results = build_ligands(database)
             | combine(build_solvents.out.solvent) 
             | minimize_ligands
             | rism_solvation
             | collect
 
-        analyze_list(results,input_dict2)
+        analyze_list(results,database.collect())
                 //| analyze_solvation*/
     } else {
         helpMessage()
