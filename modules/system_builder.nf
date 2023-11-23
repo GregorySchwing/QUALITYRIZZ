@@ -65,6 +65,146 @@ process build_ligand {
     """
 }
 
+process build_water_model {
+    container "${params.container__biobb_amber}"
+    publishDir "${params.output_folder}/${params.database}/solvents/${model}_${T}", mode: 'copy', overwrite: true
+
+    debug false
+    input:
+    tuple val(model), val(T)
+    output:
+    path("${model}.*"), emit: water
+    path("c*.*"), emit: cWater
+
+    shell:
+    """
+    #!/usr/bin/env python
+    import subprocess
+    import parmed
+    import numpy as np
+
+    TLEAP_SCRPT = '''#!/bin/bash
+    cat > "${model}_${T}".tleap <<EOF
+    source leaprc.water.${model}
+
+    # Create a system with one residue of OPC water
+    mol = sequence { WAT }
+
+    # Save the system to a parameter and coordinate file
+    saveAmberParm mol ${model}.prmtop ${model}.inpcrd
+
+    quit
+    EOF
+
+    tleap -f "${model}_${T}".tleap
+    '''
+
+    # Run the script in the current Bash environment
+    process = subprocess.run(['bash', '-c', TLEAP_SCRPT], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    # Print the output
+    print("Output:", process.stdout)
+
+    # Print any errors
+    if process.stderr:
+        print("Errors:", process.stderr)
+    quit()
+
+    parm = parmed.amber.LoadParm("${model}.prmtop", xyz="${model}.inpcrd")
+
+    print(parm.bonds[1].atom1.type)
+    print(parm.bonds[1].atom2.type)
+    print(parm.bonds[1].type)
+    print(parm.LJ_types)
+    print(parm.LJ_radius)
+    # Create a list of indices
+    indices_list = list(range(len(parm.LJ_types)))
+    print(parm.LJ_depth)
+
+    for LJ_params in zip(parm.LJ_types,parm.LJ_radius,parm.LJ_depth):
+
+        if (LJ_params[1]==0):
+            print("embedding", LJ_params, " radius")
+            print(LJ_params[0])
+            my_type = LJ_params[0]
+
+            matching_bond = next((bond for bond in parm.bonds \
+            if (bond.atom1.type == my_type and bond.atom2.type != my_type) \
+            or (bond.atom2.type == my_type and bond.atom1.type != my_type)), None)
+            bondLength = matching_bond.type.req
+            print("bondLength",bondLength)
+
+            other_atom_type = matching_bond.atom2.type if \
+            matching_bond.atom1.type == my_type else matching_bond.atom1.type \
+            if matching_bond.atom2.type == my_type else None
+
+            other_radius = parm.LJ_radius[parm.LJ_types[other_atom_type]-1]
+            other_sigma = other_radius*(2 ** (-1/6))
+            new_sigma = other_sigma - bondLength
+            parm.LJ_radius[parm.LJ_types[my_type]-1]= new_sigma/(2 ** (-1/6))
+        if (LJ_params[2]==0):
+            print("embedding", LJ_params, " depth")
+            my_type = LJ_params[0]
+
+            matching_bond = next((bond for bond in parm.bonds \
+            if (bond.atom1.type == my_type and bond.atom2.type != my_type) \
+            or (bond.atom2.type == my_type and bond.atom1.type != my_type)), None)
+            bondLength = matching_bond.type.req
+            print("bondLength",bondLength)
+
+            other_atom_type = matching_bond.atom2.type if \
+            matching_bond.atom1.type == my_type else matching_bond.atom1.type \
+            if matching_bond.atom2.type == my_type else None
+
+            other_depth = parm.LJ_depth[parm.LJ_types[other_atom_type]-1]
+            new_depth = other_depth * 0.1
+            parm.LJ_depth[parm.LJ_types[my_type]-1]= new_depth
+    print(parm.LJ_radius)
+    print(parm.LJ_depth)
+
+    parm.recalculate_LJ()
+    parm.write_parm("c{}.prmtop".format("${model}".upper()))
+
+    print(parm.pointers)
+    print(parm.ptr)
+    print(parm._AMBERPARM_ATTRS)
+    print(dir(parm))
+
+
+
+    def flatten_recursive(lst):
+        for item in lst:
+            if isinstance(item, list):
+                yield from flatten_recursive(item)
+            else:
+                yield item
+    get_name = lambda ltype: next(atom.name for atom in parm.residues[0].atoms if atom.type == ltype)
+    get_mass = lambda ltype: next(atom.mass for atom in parm.residues[0].atoms if atom.type == ltype)
+    get_charge = lambda ltype: next(atom.charge for atom in parm.residues[0].atoms if atom.type == ltype)
+    get_multi = lambda ltype: sum(1 for atom in parm.residues[0].atoms if atom.type == ltype)
+    #get_coords = lambda ltype: next(atom.charge for atom in parm.residues[0].atoms if atom.type == ltype)
+
+    emptyMDL = parmed.amber.AmberFormat()
+    emptyMDL.charge_flag="CHG"
+    #emptyMDL.add_flag(flag_name='TITLE',flag_format=str(parm.formats['TITLE']),data=parm.parm_data['TITLE'])
+    emptyMDL.add_flag(flag_name='TITLE',flag_format=str(parm.formats['TITLE']),data=["c{}".format("${model}".upper())])
+    emptyMDL.add_flag(flag_name='POINTERS',flag_format=str(parm.formats['POINTERS']),data=[parm.pointers['NATOM'],parm.pointers['NTYPES']])
+    emptyMDL.add_flag(flag_name='ATMTYP',flag_format=str(parm.formats['ATOM_TYPE_INDEX']),data=[value for value in parm.LJ_types.values()])
+    emptyMDL.add_flag(flag_name='ATMNAME',flag_format=str(parm.formats['TITLE']),data=[get_name(ltype) for ltype in parm.LJ_types.keys()])
+    emptyMDL.add_flag(flag_name='MASS',flag_format=str(parm.formats['RADII']),data=[get_mass(ltype) for ltype in parm.LJ_types.keys()])
+    emptyMDL.add_flag(flag_name='CHG',flag_format=str(parm.formats['RADII']),data=[get_charge(ltype) for ltype in parm.LJ_types.keys()])
+    emptyMDL.add_flag(flag_name='LJEPSILON',flag_format=str(parm.formats['RADII']),data=[parm.LJ_depth[value-1] for value in parm.LJ_types.values()])
+    emptyMDL.add_flag(flag_name='LJSIGMA',flag_format=str(parm.formats['RADII']),data=[parm.LJ_radius[value-1] for value in parm.LJ_types.values()])
+    emptyMDL.add_flag(flag_name='MULTI',flag_format=str(parm.formats['POINTERS']),data=[get_multi(ltype) for ltype in parm.LJ_types.keys()])
+    emptyMDL.add_flag(flag_name='COORD',flag_format=str(parm.formats['RADII']),data=np.concatenate(list(np.array(item).flatten() for item in parm.get_coordinates())))
+
+    emptyMDL.write_parm("c{}.mdl".format("${model}".upper()))
+    quit()
+
+    """
+
+}
+
 
 process build_ligand_list {
     container "${params.container__openff_toolkit}"
@@ -129,9 +269,9 @@ process build_water_parameters {
 
     debug false
     input:
-    tuple val(model), val(temperature)
+    tuple val(model), val(SMILES), val(FF), val(temperature)
     output:
-    tuple val(model), val(temperature), path("*.mdl")
+    tuple val(model), val(temperature), path("*"), path("*.mdl")
 
     script:
     """
@@ -173,8 +313,8 @@ process build_water_parameters {
         return water_reference
 
     #print(smirnoff.get_available_force_fields())
-    print("${model}")
-    water_interchange = ForceField("${model}").create_interchange(Molecule.from_mapped_smiles(
+    print("${FF}")
+    water_interchange = ForceField("${FF}").create_interchange(Molecule.from_mapped_smiles(
         "[O:1]([H:2])[H:3]"
     ).to_topology())
     OH_bond, HH_bond = water_interchange.collections['Constraints'].potentials.values()
@@ -256,19 +396,22 @@ process build_solvent_parameters {
             * Quantity(
                 [
                     [0.0, 0.0, 0.0],
-                    [-sin(theta / 2), cos(theta / 2), 0.0],
-                    [sin(theta / 2), cos(theta / 2), 0.0],
+                    [1, 0.0, 0.0],
+                    [cos(theta), sin(theta), 0.0],
                 ]
             )
         )
-        import numpy as np
-        print("np theta",np.deg2rad(calc_theta(HH_bond_length,OH_bond_length)))
-        print([-sin(theta / 2), cos(theta / 2), 0.0])
-        print([sin(theta / 2), cos(theta / 2), 0.0])
 
-        r1 = [-sin(theta / 2), cos(theta / 2), 0.0]
-        r2 = np.linalg.norm([sin(theta / 2), cos(theta / 2), 0.0])
-        print(r1,r2)
+        coord = bond_length * Quantity(
+                [
+                    [0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [sin(theta / 2), cos(theta / 2), 0.0],
+                ]
+            )
+        print(coord)
+        print("water_reference",water_reference._conformers)
+
         return water_reference
 
     from rdkit import Chem
@@ -328,14 +471,14 @@ process build_solvent_parameters {
     
     # Scaffold interchange, with bond information needed to construct water
     interchange = ForceField("openff-2.0.0.offxml").create_interchange(water_reference.to_topology())
-
+    print(interchange.positions)
 
     # Assigns desired forcefield parameters to interchange
     interchange.collections['vdW'].potentials=water_interchange.collections['vdW'].potentials
     interchange.collections['Electrostatics'].potentials=water_interchange.collections['Electrostatics'].potentials
 
     # Tweak forcefield if you wish
-    if (True):
+    if (False):
         from openff.interchange.models import TopologyKey
         oxygen = TopologyKey(atom_indices=(0,))
         hydrogen = TopologyKey(atom_indices=(1,))
