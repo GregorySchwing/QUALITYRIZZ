@@ -276,6 +276,7 @@ process build_solvent_parameters {
 
         return water_reference
 
+    #print(smirnoff.get_available_force_fields())
 
     if ("$model"=="WATER"):
         #print(smirnoff.get_available_force_fields())
@@ -332,12 +333,12 @@ process build_solvent_parameters {
             force_field=forcefield,
             topology=topology,
         )
-        #interchange.minimize()
+        interchange.minimize()
         interchange.to_prmtop("solvent.prmtop")
         interchange.to_inpcrd("solvent.crd")
-        
-
-
+        from parmed.amber import LoadParm
+        parm=LoadParm("solvent.prmtop","solvent.crd")
+        parm.write_mdl("solvent.mdl")
 
     """
 }
