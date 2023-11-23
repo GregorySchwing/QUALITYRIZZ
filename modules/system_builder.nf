@@ -222,7 +222,7 @@ process build_solvent_parameters {
     input:
     tuple val(model), val(SMILES), val(FF), val(temperature)
     output:
-    tuple val(model), val(temperature), path("*")
+    tuple val(model), val(temperature), path("solvent.prmtop"), path("solvent.crd")
 
     script:
     """
@@ -233,43 +233,6 @@ process build_solvent_parameters {
     from openff.interchange import Interchange
     from openff.toolkit.typing.engines.smirnoff import ForceField
     from openff.toolkit.typing.engines import smirnoff
-
-    # Many thanks: openff-toolkit/examples/virtual_sites/vsite_showcase.ipynb
-    # And https://www.calculator.net/triangle-calculator.html
-    def build_water(OH_bond_length, HH_bond_length):
-        from math import cos, sin, acos, degrees
-        calc_theta = lambda a, b: degrees(acos(1 - ((a * a) / (2 * b * b)))) if a != 0 else None    
-        water_reference = Molecule.from_mapped_smiles("[O:1]([H:2])[H:3]")
-        water_reference.atoms[0].name = "O"
-        water_reference.atoms[1].name = "H1"
-        water_reference.atoms[2].name = "H2"
-
-        # Add ideal TIP5P geometry
-        bond_length = Quantity(OH_bond_length, unit.angstrom)
-        print("theta",calc_theta(HH_bond_length,OH_bond_length))
-        print("rOH",bond_length)
-
-        theta = Quantity(calc_theta(HH_bond_length,OH_bond_length), unit.degree).to(unit.radian)
-        print(theta)
-        water_reference.add_conformer(
-            bond_length
-            * Quantity(
-                [
-                    [0.0, 0.0, 0.0],
-                    [-sin(theta / 2), cos(theta / 2), 0.0],
-                    [sin(theta / 2), cos(theta / 2), 0.0],
-                ]
-            )
-        )
-        import numpy as np
-        print("np theta",np.deg2rad(calc_theta(HH_bond_length,OH_bond_length)))
-        print([-sin(theta / 2), cos(theta / 2), 0.0])
-        print([sin(theta / 2), cos(theta / 2), 0.0])
-
-        r1 = [-sin(theta / 2), cos(theta / 2), 0.0]
-        r2 = np.linalg.norm([sin(theta / 2), cos(theta / 2), 0.0])
-        print(r1,r2)
-        return water_reference
 
     from rdkit import Chem
     from rdkit.Chem import AllChem
@@ -283,18 +246,77 @@ process build_solvent_parameters {
         AllChem.EmbedMolecule(mol, params)
         return mol
 
-    #print(smirnoff.get_available_force_fields())
-    print("${FF}")
-    water_interchange = ForceField("${FF}").create_interchange(Molecule.from_mapped_smiles(
-        "[O:1]([H:2])[H:3]"
-    ).to_topology())
-    OH_bond, HH_bond = water_interchange.collections['Constraints'].potentials.values()
 
-    # Build correct water molecule
-    water_reference = build_water(OH_bond.parameters['distance'],HH_bond.parameters['distance'])
+    # Many thanks: openff-toolkit/examples/virtual_sites/vsite_showcase.ipynb
+    # And https://www.calculator.net/triangle-calculator.html
+    def build_water(OH_bond_length=1, HH_bond_length=1.63298086):
+        from math import cos, sin, acos, degrees
+        calc_theta = lambda a, b: degrees(acos(1 - ((a * a) / (2 * b * b)))) if a != 0 else None    
+        water_reference = Molecule.from_mapped_smiles("[O:1]([H:2])[H:3]")
+        water_reference.atoms[0].name = "O"
+        water_reference.atoms[1].name = "H1"
+        water_reference.atoms[2].name = "H2"
+
+        # Add ideal TIP5P geometry
+        bond_length = Quantity(OH_bond_length, unit.angstrom)
+        print("theta",calc_theta(HH_bond_length,OH_bond_length))
+        print("rOH",bond_length)
+
+        theta = Quantity(calc_theta(HH_bond_length,OH_bond_length), unit.degree).to(unit.radian)
+        water_reference.add_conformer(
+            bond_length
+            * Quantity(
+                [
+                    [0.0, 0.0, 0.0],
+                    [-sin(theta / 2), cos(theta / 2), 0.0],
+                    [sin(theta / 2), cos(theta / 2), 0.0],
+                ]
+            )
+        )
+
+        return water_reference
+
 
     if ("$model"=="WATER"):
-        forcefield = ForceField("openff-2.1.0.offxml","${FF}")
+        #print(smirnoff.get_available_force_fields())
+        print("${FF}")
+        water_interchange = ForceField("${FF}").create_interchange(Molecule.from_mapped_smiles(
+            "[O:1]([H:2])[H:3]"
+        ).to_topology())
+        OH_bond, HH_bond = water_interchange.collections['Constraints'].potentials.values()
+
+        # Build correct water molecule
+        water_reference = build_water(OH_bond.parameters['distance'],HH_bond.parameters['distance'])
+
+        # Scaffold interchange, with bond information needed to construct water
+        interchange = ForceField("openff-2.0.0.offxml").create_interchange(water_reference.to_topology())
+
+
+        # Assigns desired forcefield parameters to interchange
+        interchange.collections['vdW'].potentials=water_interchange.collections['vdW'].potentials
+        interchange.collections['Electrostatics'].potentials=water_interchange.collections['Electrostatics'].potentials
+
+        # Tweak forcefield if you wish
+        if (True):
+            from openff.interchange.models import TopologyKey
+            oxygen = TopologyKey(atom_indices=(0,))
+            hydrogen = TopologyKey(atom_indices=(1,))
+            oxygen_pot_key = interchange.collections['vdW'].key_map[oxygen]
+            hydrogen_pot_key = interchange.collections['vdW'].key_map[hydrogen]
+            interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['sigma']= interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['sigma'] - 2*OH_bond.parameters['distance']
+            interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['epsilon']= interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['epsilon'] * 0.1
+            print("sigma_Hy",interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['sigma'])
+            print("epsilon_Hy",interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['epsilon'])
+            print("sigma_O",interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['sigma'])
+            print("epsilon_Oxy",interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['epsilon'])
+
+        interchange.to_prmtop("solvent.prmtop")
+        interchange.to_inpcrd("solvent.crd")
+        from parmed.amber import LoadParm
+        parm=LoadParm("solvent.prmtop","solvent.crd")
+        parm.write_mdl("solvent.mdl")
+    else:
+        forcefield = ForceField("${FF}")
         openff_mol = Molecule.from_smiles("${SMILES}",allow_undefined_stereo=True)
         rdmol = openff_mol.to_rdkit()
         rdmol3D = embed(rdmol,123)
@@ -305,55 +327,115 @@ process build_solvent_parameters {
             "solvent.pdb",
             unique_molecules=[openff_mol],
         )
-        interchangeArg = Interchange.from_smirnoff(
+
+        interchange = Interchange.from_smirnoff(
             force_field=forcefield,
             topology=topology,
         )
-        #print(interchangeArg)
-        #print(dir(interchangeArg))
-        interchangeArg.minimize()
-        interchangeArg.to_prmtop("water2.prmtop")
-        interchangeArg.to_inpcrd("water2.crd")
-        from parmed.amber import LoadParm
-        parm=LoadParm("water2.prmtop","water2.crd")
-        parm.write_mdl("water2.mdl")
-    else:
-        interchangeArg = ForceField(
-            "${FF}",
-        ).create_interchange(
-            Molecule.from_smiles(
-                "${SMILES}"
-            ).to_topology(),
-        )
-    
-    # Scaffold interchange, with bond information needed to construct water
-    interchange = ForceField("openff-2.0.0.offxml").create_interchange(water_reference.to_topology())
+        #interchange.minimize()
+        interchange.to_prmtop("solvent.prmtop")
+        interchange.to_inpcrd("solvent.crd")
+        
 
 
-    # Assigns desired forcefield parameters to interchange
-    interchange.collections['vdW'].potentials=water_interchange.collections['vdW'].potentials
-    interchange.collections['Electrostatics'].potentials=water_interchange.collections['Electrostatics'].potentials
 
-    # Tweak forcefield if you wish
-    if (True):
-        from openff.interchange.models import TopologyKey
-        oxygen = TopologyKey(atom_indices=(0,))
-        hydrogen = TopologyKey(atom_indices=(1,))
-        oxygen_pot_key = interchange.collections['vdW'].key_map[oxygen]
-        hydrogen_pot_key = interchange.collections['vdW'].key_map[hydrogen]
-        interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['sigma']= interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['sigma'] - 2*OH_bond.parameters['distance']
-        interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['epsilon']= interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['epsilon'] * 0.1
-        print("sigma_Hy",interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['sigma'])
-        print("epsilon_Hy",interchange.collections['vdW'].potentials[hydrogen_pot_key].parameters['epsilon'])
-        print("sigma_O",interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['sigma'])
-        print("epsilon_Oxy",interchange.collections['vdW'].potentials[oxygen_pot_key].parameters['epsilon'])
+    """
+}
 
 
-    interchange.to_prmtop("water.prmtop")
-    interchange.to_inpcrd("water.crd")
+process minimize_solvent {
+    container "${params.container__biobb_amber}"
+    publishDir "${params.output_folder}/${params.database}/solvent_parameters/${model}_${temperature}", mode: 'copy', overwrite: false
+
+    debug false
+    input:
+    tuple val(model), val(temperature), path(prm), path(crd)
+    output:
+    path("sander.*"), emit: paths
+    tuple val(model), val(temperature), path(prm), path("sander.n_min.rst7"), emit: minimized_solvent
+    maxRetries 20
+    script:
+    """
+    #!/usr/bin/env python
+    print("Hello from ${model} ${temperature} ${prm} ${crd}")
+    # Import module
+    from biobb_amber.sander.sander_mdrun import sander_mdrun
+
+    # Create prop dict and inputs/outputs
+    output_n_min_traj_file = 'sander.n_min.x'
+    output_n_min_rst_file = 'sander.n_min.rst7'
+    output_n_min_log_file = 'sander.n_min.log'
+
+    # Minimization script from PC_PLUS
+    prop = {
+        'simulation_type' : "minimization",
+        "mdin" : { 
+            'imin' : 1, # perform minimization
+            'maxcyc' : 500, # The maximum number of cycles of minimization
+            'drms' : 1e-3, # RMS force
+            'ntmin' : 3, # xmin algorithm
+            'ntb' : 0, # no periodic boundary
+            'cut' : 999, # non-bonded cutoff
+            'ntpr' : 5, # printing frequency
+            'ntxo' : 1, # asci formatted rst7
+        },
+    }
+
+    # Create and launch bb
+    sander_mdrun(input_top_path="${prm}",
+                input_crd_path="${crd}",
+                output_traj_path=output_n_min_traj_file,
+                output_rst_path=output_n_min_rst_file,
+                output_log_path=output_n_min_log_file,
+                properties=prop)
+
+    # Import module
+    from biobb_amber.process.process_minout import process_minout
+
+    # Create prop dict and inputs/outputs
+    output_n_min_dat_file = 'sander.n_min.energy.dat'
+    prop = {
+        "terms" : ['ENERGY']
+    }
+
+    # Create and launch bb
+    process_minout(input_log_path=output_n_min_log_file,
+                output_dat_path=output_n_min_dat_file,
+                properties=prop)
+
+    from biobb_amber.ambpdb.amber_to_pdb import amber_to_pdb
+    output_n_min_pdb_file = "sander.n_min.pdb"
+    prop = {
+        'remove_tmp': True,
+        'check_extensions' : False,
+    }
+    amber_to_pdb(input_top_path="${prm}",
+                input_crd_path=output_n_min_rst_file,
+                output_pdb_path=output_n_min_pdb_file,
+                properties=prop)
+    """
+}
+
+
+
+process build_mdl {
+    container "${params.container__openff_toolkit}"
+    publishDir "${params.output_folder}/${params.database}/mdl/${model}_${temperature}", mode: 'copy', overwrite: true
+
+    debug true
+    input:
+    tuple val(model), val(temperature), path(prm), path(rst)
+    output:
+    tuple val(model), val(temperature), path("solvent.mdl")
+
+    script:
+    """
+    #!/usr/bin/env python
+    # Imports from the toolkit
     from parmed.amber import LoadParm
-    parm=LoadParm("water.prmtop","water.crd")
-    parm.write_mdl("water.mdl")
+    parm=LoadParm("${prm}","${rst}")
+    parm.write_mdl("solvent.mdl")
+
     """
 }
 
@@ -631,7 +713,11 @@ workflow build_solvents {
     main:
     //build_water_parameters(solv_temp_pairs)
     build_solvent_parameters(solv_temp_pairs)
+    | minimize_solvent
+    
+    build_mdl(minimize_solvent.out.minimized_solvent)
     | build_solvent
+
     
     emit:
     xvv = build_solvent.out.paths.flatten().filter { file -> file.name.endsWith("xvv") }
