@@ -216,7 +216,7 @@ process build_water_parameters {
 
 process build_solvent_parameters {
     container "${params.container__openff_toolkit}"
-    publishDir "${params.output_folder}/${params.database}/water_parameters/${model}", mode: 'copy', overwrite: true
+    publishDir "${params.output_folder}/${params.database}/solvent_parameters/${model}", mode: 'copy', overwrite: true
 
     debug true
     input:
@@ -345,7 +345,7 @@ process build_solvent_parameters {
 
 process minimize_solvent {
     container "${params.container__biobb_amber}"
-    publishDir "${params.output_folder}/${params.database}/solvent_parameters/${model}_${temperature}", mode: 'copy', overwrite: false
+    publishDir "${params.output_folder}/${params.database}/solvent_minimized/${model}_${temperature}", mode: 'copy', overwrite: false
 
     debug false
     input:
