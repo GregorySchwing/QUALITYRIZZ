@@ -73,6 +73,7 @@ log.info """\
          output_folder          : ${params.output_folder}
          database               : ${params.database}
          database_path          : ${params.database_path}
+         solvent_path           : ${params.solvent_path}
          id_col                 : ${params.id_col}
          structure_col          : ${params.structure_col}
          reference_col          : ${params.reference_col}
@@ -106,12 +107,17 @@ log.info """\
                                         "\"${params.structure_col}\"":"\"${row."${params.structure_col}"}\""]
                 ["\"${row."${params.id_col}"}\"":tumor_reads]
             }
-
+        solventListChannel = Channel.fromPath( params.solvent_path ).splitCsv(header: true,limit: 2).map { 
+            row -> [row.NAME, row.SMILES, row.FF]
+        }
+        solventListChannel.view()
         waterChannel = Channel.from( waterModels )
         temperatureChannel = Channel.from( temperatures )
-        solventChannel = waterChannel.combine(temperatureChannel)
+        solventChannel = solventListChannel.combine(temperatureChannel)
         solventChannel.view()
         build_solvents(solventChannel) 
+        return
+
         database=extract_database_channel(input_dict2)
         results = build_ligands(database)
             | combine(build_solvents.out.solvent) 
