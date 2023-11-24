@@ -218,11 +218,11 @@ process build_solvent_parameters {
     container "${params.container__openff_toolkit}"
     publishDir "${params.output_folder}/${params.database}/solvent_parameters/${model}", mode: 'copy', overwrite: true
 
-    debug true
+    debug false
     input:
-    tuple val(model), val(SMILES), val(FF), val(temperature)
+    tuple val(model), val(SMILES), val(FF), val(temperature), val(dieps), val(density)
     output:
-    tuple val(model), val(temperature), path("solvent.prmtop"), path("solvent.crd")
+    tuple val(model), val(temperature), val(dieps), val(density), path("solvent.prmtop"), path("solvent.crd")
 
     script:
     """
@@ -350,10 +350,10 @@ process minimize_solvent {
 
     debug false
     input:
-    tuple val(model), val(temperature), path(prm), path(crd)
+    tuple val(model), val(temperature), val(dieps), val(density), path(prm), path(crd)
     output:
     path("sander.*"), emit: paths
-    tuple val(model), val(temperature), path(prm), path("sander.n_min.rst7"), emit: minimized_solvent
+    tuple val(model), val(temperature), val(dieps), val(density), path(prm), path("sander.n_min.rst7"), emit: minimized_solvent
     maxRetries 20
     script:
     """
@@ -423,11 +423,11 @@ process build_mdl {
     container "${params.container__openff_toolkit}"
     publishDir "${params.output_folder}/${params.database}/mdl/${model}_${temperature}", mode: 'copy', overwrite: true
 
-    debug true
+    debug false
     input:
-    tuple val(model), val(temperature), path(prm), path(rst)
+    tuple val(model), val(temperature), val(dieps), val(density), path(prm), path(rst)
     output:
-    tuple val(model), val(temperature), path("solvent.mdl")
+    tuple val(model), val(temperature), val(dieps), val(density), path("solvent.mdl")
 
     script:
     """
@@ -447,7 +447,7 @@ process build_solvent {
 
     debug false
     input:
-    tuple val(model), val(T), path(mdl)
+    tuple val(model), val(T), val(dieps), val(density), path(mdl)
     output:
     path("${model}_${T}*.*"), emit: paths
     val(model), emit: model
@@ -526,6 +526,7 @@ process build_solvent {
     /
         &SPECIES                               !SPC water
         DENSITY={conc}d0,
+        units='g/cm^3',
         MODEL="${mdl}"
         !MODEL="/usr/local/dat/rism1d/mdl/cSPCE.mdl"
     /
@@ -540,8 +541,8 @@ process build_solvent {
     closure="PSE3"
     closure="KH"
     rism1d_name = '{smodel}_{temp}'.format(smodel=smodel,temp=T)
-    diel = dieps
-    conc = conc
+    diel = ${dieps}
+    conc = ${density}
 
     closure_list = ["KH", "PSE1", "PSE2", "PSE3","HNC"]
     RENAMECOMMAND = ""

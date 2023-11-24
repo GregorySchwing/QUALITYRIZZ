@@ -108,14 +108,14 @@ log.info """\
                 ["\"${row."${params.id_col}"}\"":tumor_reads]
             }
         solventListChannel = Channel.fromPath( params.solvent_path ).splitCsv(header: true,limit: 2).map { 
-            row -> [row.NAME, row.SMILES, row.FF]
+            row -> [row.NAME, row.SMILES, row.FF, row.TEMP, row.DIEPS, row.DENSITY]
         }
         solventListChannel.view()
-        waterChannel = Channel.from( waterModels )
-        temperatureChannel = Channel.from( temperatures )
-        solventChannel = solventListChannel.combine(temperatureChannel)
-        solventChannel.view()
-        build_solvents(solventChannel) 
+        //waterChannel = Channel.from( waterModels )
+        //temperatureChannel = Channel.from( temperatures )
+        //solventChannel = solventListChannel.combine(temperatureChannel)
+        //solventChannel.view()
+        build_solvents(solventListChannel) 
         return
 
         database=extract_database_channel(input_dict2)
