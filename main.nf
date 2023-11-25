@@ -116,7 +116,6 @@ log.info """\
         //solventChannel = solventListChannel.combine(temperatureChannel)
         //solventChannel.view()
         build_solvents(solventListChannel) 
-        return
 
         database=extract_database_channel(input_dict2)
         results = build_ligands(database)
