@@ -162,7 +162,7 @@ process build_ligand_qm {
         LibraryChargeGenerator,
     )
     from openff.recharge.charges.resp import generate_resp_charge_parameter
-    from openff.recharge.charges.resp.solvers import IterativeSolver
+    from openff.recharge.charges.resp.solvers import IterativeSolver,SciPySolver
     from openff.recharge.esp import ESPSettings
     from openff.recharge.esp.psi4 import Psi4ESPGenerator
     from openff.recharge.esp.storage import MoleculeESPRecord
@@ -232,11 +232,11 @@ process build_ligand_qm {
         openff_mol_qc, conformer, grid, esp, None, qc_data_settings
     )
 
-    resp_solver = IterativeSolver()
+    #resp_solver = IterativeSolver()
     # While by default the iterative approach to finding the set of charges that minimize
     # the RESP loss function as described in the original papers is used, others such as
     # an experimental one that calls out to SciPy are available, e.g.
-    # resp_solver = SciPySolver(method="SLSQP")
+    resp_solver = SciPySolver(method="SLSQP")
 
     resp_charge_parameter = generate_resp_charge_parameter(
         [qc_data_record], resp_solver
