@@ -486,7 +486,7 @@ process build_water_parameters {
 
 process build_solvent_parameters {
     container "${params.container__openff_toolkit}"
-    publishDir "${params.output_folder}/${params.database}/solvent_parameters/${model}", mode: 'copy', overwrite: true
+    publishDir "${params.output_folder}/${params.database}/solvent_parameters/${FF}", mode: 'copy', overwrite: true
 
     debug false
     input:

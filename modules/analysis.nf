@@ -227,10 +227,10 @@ process analyze_mobley {
     filtered_df = result_df2[result_df2['partial_charge_method'].isin(selected_charge_methods)]
 
     # Calculate the mean absolute deviation for each 'partial_charge_method'
-    mad_by_charge = filtered_df.groupby('partial_charge_method')['absolute_deviation'].mean()
+    stats = filtered_df.groupby(['partial_charge_method', 'solvent'])['absolute_deviation'].mean()
 
-    print(mad_by_charge)
-    mad_by_charge.to_csv("stats.csv", header=True, index=True)
+    print(stats)
+    stats.to_csv("stats.csv", header=True, index=True)
 
 
     plt.xlabel("${params.reference_col}", fontsize=20)
