@@ -43,6 +43,9 @@ Required Arguments:
 
 Optional Arguments:
     --output_folder       Folder for output files (default $projectDir/results).
+    --solute_samples      Number of solutes in solute database to run (default -1).
+    --solvent_samples     Number of solutes in solvent list to run (default -1).
+
     """.stripIndent()
 }
 
@@ -77,7 +80,8 @@ log.info """\
          id_col                 : ${params.id_col}
          structure_col          : ${params.structure_col}
          reference_col          : ${params.reference_col}
-         samples                : ${params.samples}
+         solute_samples         : ${params.solute_samples}
+         solvent_samples        : ${params.solvent_samples}
          """
          .stripIndent()
 
@@ -101,7 +105,7 @@ log.info """\
         }
 
         input_dict2 = Channel.fromPath(params.database_path)
-            .splitCsv(header: true, limit: params.samples)
+            .splitCsv(header: true, limit: params.solute_samples)
             .flatMap { row ->
                 def tumor_reads = ["\"${params.reference_col}\"":"\"${row."${params.reference_col}"}\"", 
                                         "\"${params.structure_col}\"":"\"${row."${params.structure_col}"}\""]
