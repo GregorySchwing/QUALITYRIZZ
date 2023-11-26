@@ -128,17 +128,17 @@ process build_ligand_list {
 
 process build_ligand_qm {
     container "${params.container__openff_toolkit}"
-    publishDir "${params.output_folder}/${params.database}/systems/${pathToJson.baseName}", mode: 'copy', overwrite: true
+    publishDir "${params.output_folder}/${params.database}/systems/${pathToJson.baseName}_${partial_charge_method}", mode: 'copy', overwrite: true
 
-    debug true
+    debug false
     input:
-    path pathToJson
+    tuple path(pathToJson), val(partial_charge_method)
     output:
     val(pathToJson.baseName), emit: molecule
     path("ligand.prmtop"), emit: prm
     path("ligand.crd"), emit: crd
     path("ligand.mol2"), emit: mol2
-    tuple val(pathToJson.baseName), path("ligand.prmtop"), path("ligand.crd"), emit: system
+    tuple val(pathToJson.baseName), path("ligand.prmtop"), path("ligand.crd"), val(partial_charge_method), emit: system
     script:
     """
     #!/usr/bin/env python
@@ -225,7 +225,7 @@ process build_ligand_qm {
         print(ret.molecule.geometry)
         openff_mol_3D = Molecule.from_qcschema(ret.molecule,allow_undefined_stereo=True)
 
-    partial_charge_method=$partial_charge_method
+    partial_charge_method="$partial_charge_method"
 
     if (partial_charge_method != "RESP"):
         openff_mol_3D.assign_partial_charges(partial_charge_method=partial_charge_method)

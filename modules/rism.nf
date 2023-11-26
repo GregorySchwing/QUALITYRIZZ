@@ -5,15 +5,15 @@ nextflow.enable.dsl=2
 
 process solvation {
     container "${params.container__biobb_amber}"
-    publishDir "${params.output_folder}/${params.database}/3DRISM/${molecule}_${model}_${temperature}", mode: 'copy', overwrite: false
+    publishDir "${params.output_folder}/${params.database}/3DRISM/${molecule}_${partial_charge_method}_${model}_${temperature}", mode: 'copy', overwrite: false
 
     debug false
     input:
-    tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv), path(pdb), path(rst)
+    tuple val(molecule), path(prm), path(crd), val(partial_charge_method), val(model), val(temperature), path(xvv), path(pdb), path(rst)
     output:
     path("*"), emit: all
     path("rism.log"), emit: log
-    path("${molecule}_${model}_${temperature}.json"), emit: json
+    path("${molecule}_${partial_charge_method}_${model}_${temperature}.json"), emit: json
     maxRetries 20
 
     script:
@@ -111,8 +111,8 @@ process solvation {
         file.write(process.stdout)
 
     import json
-    results = {"molecule":"${molecule}", "solvent" : "${model}", "temperature" : ${temperature}, "PC+dG*(solv)(kcal/mol)":extracted_number}
-    with open("${molecule}_${model}_${temperature}.json", 'w') as file:
+    results = {"molecule":"${molecule}", "partial_charge_method":"${partial_charge_method}", "solvent" : "${model}", "temperature" : ${temperature}, "PC+dG*(solv)(kcal/mol)":extracted_number}
+    with open("${molecule}_${partial_charge_method}_${model}_${temperature}.json", 'w') as file:
         json.dump(results, file)
     """
 }

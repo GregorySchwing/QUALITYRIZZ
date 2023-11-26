@@ -5,14 +5,14 @@ nextflow.enable.dsl=2
 
 process minimize_ligand {
     container "${params.container__biobb_amber}"
-    publishDir "${params.output_folder}/${params.database}/minimizations/${molecule}_${model}_${temperature}", mode: 'copy', overwrite: false
+    publishDir "${params.output_folder}/${params.database}/minimizations/${molecule}_${partial_charge_method}_${model}_${temperature}", mode: 'copy', overwrite: false
 
     debug false
     input:
-    tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv) 
+    tuple val(molecule), path(prm), path(crd), val(partial_charge_method), val(model), val(temperature), path(xvv) 
     output:
     path("sander.*"), emit: paths
-    tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv), path("sander.n_min.pdb"), path("sander.n_min.rst7"), emit: minimized_system
+    tuple val(molecule), path(prm), path(crd), val(partial_charge_method), val(model), val(temperature), path(xvv), path("sander.n_min.pdb"), path("sander.n_min.rst7"), emit: minimized_system
     maxRetries 20
     script:
     """
@@ -84,9 +84,9 @@ process add_box {
 
     debug false
     input:
-    tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv), path(pdb), path(rst)
+    tuple val(molecule), path(prm), path(crd), val(partial_charge_method), val(model), val(temperature), path(xvv), path(pdb), path(rst)
     output:
-    tuple val(molecule), path(prm), path(crd), val(model), val(temperature), path(xvv), path(pdb), path("sander.n_min.box.rst7"), emit: minimized_system
+    tuple val(molecule), path(prm), path(crd), val(partial_charge_method), val(model), val(temperature), path(xvv), path(pdb), path("sander.n_min.box.rst7"), emit: minimized_system
 
 
     shell:

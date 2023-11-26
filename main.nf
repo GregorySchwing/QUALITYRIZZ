@@ -111,16 +111,10 @@ log.info """\
             row -> [row.NAME, row.SMILES, row.FF, row.TEMP, row.DIEPS, row.DENSITY]
         }
         solventListChannel.view()
-        input_dict2.combine(partial_charge_method).view()
-        return
-        //waterChannel = Channel.from( waterModels )
-        //temperatureChannel = Channel.from( temperatures )
-        //solventChannel = solventListChannel.combine(temperatureChannel)
-        //solventChannel.view()
         build_solvents(solventListChannel) 
-
         database=extract_database_channel(input_dict2)
-        results = build_ligands(database)
+        molecules_and_charges = database.combine(partial_charge_method)
+        results = build_ligands(molecules_and_charges)
             | combine(build_solvents.out.solvent) 
             | minimize_ligands
             | rism_solvation
