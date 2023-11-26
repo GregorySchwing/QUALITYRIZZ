@@ -1,0 +1,10 @@
+name: psi4
+channels:
+  - conda-forge
+  - conda-forge/label/libint_dev
+dependencies:
+  - conda-forge::psi4>=1.8.2
+  - conda-forge::openff-toolkit
+  - conda-forge::openff-recharge
+  - conda-forge::pydantic<2
+
