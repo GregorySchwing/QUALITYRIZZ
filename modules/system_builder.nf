@@ -492,7 +492,7 @@ process build_solvent_parameters {
     input:
     tuple val(model), val(SMILES), val(FF), val(temperature), val(dieps), val(density)
     output:
-    tuple val(model), val(temperature), val(dieps), val(density), path("solvent.prmtop"), path("solvent.crd")
+    tuple val(FF), val(temperature), val(dieps), val(density), path("solvent.prmtop"), path("solvent.crd")
 
     script:
     """

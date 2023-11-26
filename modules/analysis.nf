@@ -157,7 +157,7 @@ process analyze_mobley {
 
     print(database)
     result_df = database
-
+    result_df2 = pd.DataFrame()
     # Assuming the list of file paths is provided
     file_ids = "${ids}".split(" ")
 
@@ -169,23 +169,27 @@ process analyze_mobley {
         # Extract relevant information
         molecule = data["molecule"]
         solvent = data["solvent"]
+        partial_charge_method = data["partial_charge_method"]
         if (solvent == 'tip3p_fb-1.1.1.offxml'):
             solvent = 'tip3p-fb-1.1.1.offxml'
         pc_dg_solv = data["PC+dG*(solv)(kcal/mol)"]
+        expt_solv = result_df.at[molecule, 'experimentalvalue(kcal/mol)']
         # Append the data to the result DataFrame
         # result_df = pd.concat([result_df, pd.DataFrame({"molecule": [molecule], "PC+dG*(solv)(kcal/mol)": [pc_dg_solv], "expt (solv)(kcal/mol)": [expt_solv]})], ignore_index=True)
-        result_df.at[molecule, solvent] = pc_dg_solv
-    print(result_df)
+        #result_df.at[molecule, solvent] = pc_dg_solv
+        result_df2 = pd.concat([result_df2, pd.DataFrame({"molecule": [molecule], "solvent":[solvent], "partial_charge_method":[partial_charge_method], "PC+dG*(solv)(kcal/mol)": [pc_dg_solv], "experimentalvalue(kcal/mol)": [expt_solv]})], ignore_index=True)
+
+    print(result_df2.to_string())
     # Save the result DataFrame to a CSV file
-    result_df = result_df.dropna()
+    result_df2 = result_df2.dropna()
     # Convert all columns to numeric
-    result_df = result_df.apply(pd.to_numeric, errors='coerce')
+    #result_df2 = result_df2.apply(pd.to_numeric, errors='coerce')
 
     normalize = False
     if (normalize):
-        result_df = (result_df - result_df.min()) / (result_df.max() - result_df.min())
+        result_df2 = (result_df2 - result_df2.min()) / (result_df2.max() - result_df2.min())
 
-    result_df.to_csv("results.csv")
+    result_df2.to_csv("results.csv")
 
 
     # Create a scatter plot
