@@ -148,9 +148,6 @@ process analyze_mobley {
         # Append the temporary DataFrame to the main DataFrame
         database = pd.concat([database, temp_df])
 
-    # Rename the first column to 'expt'
-    #database = database.rename(columns={database.columns[0]: 'expt'})
-    # Rename the index column to 'molecule'
     database = database.rename_axis('molecule')
     # Drop the 'SMILES' column
     database = database.drop('SMILES', axis=1)
@@ -173,11 +170,11 @@ process analyze_mobley {
         if (solvent == 'tip3p_fb-1.1.1.offxml'):
             solvent = 'tip3p-fb-1.1.1.offxml'
         pc_dg_solv = data["PC+dG*(solv)(kcal/mol)"]
-        expt_solv = result_df.at[molecule, 'experimentalvalue(kcal/mol)']
+        expt_solv = result_df.at[molecule, '${params.reference_col}']
         # Append the data to the result DataFrame
         # result_df = pd.concat([result_df, pd.DataFrame({"molecule": [molecule], "PC+dG*(solv)(kcal/mol)": [pc_dg_solv], "expt (solv)(kcal/mol)": [expt_solv]})], ignore_index=True)
         #result_df.at[molecule, solvent] = pc_dg_solv
-        result_df2 = pd.concat([result_df2, pd.DataFrame({"molecule": [molecule], "solvent":[solvent], "partial_charge_method":[partial_charge_method], "PC+dG*(solv)(kcal/mol)": [pc_dg_solv], "experimentalvalue(kcal/mol)": [expt_solv]})], ignore_index=True)
+        result_df2 = pd.concat([result_df2, pd.DataFrame({"molecule": [molecule], "solvent":[solvent], "partial_charge_method":[partial_charge_method], "PC+dG*(solv)(kcal/mol)": [pc_dg_solv], "${params.reference_col}": [float(expt_solv)]})], ignore_index=True)
 
     print(result_df2.to_string())
     # Save the result DataFrame to a CSV file
@@ -195,7 +192,10 @@ process analyze_mobley {
     # Create a scatter plot
     plt.figure(figsize=(10, 6))
     # Plotting
-    plt.plot(result_df["${params.reference_col}"], result_df["${params.reference_col}"], label="Reference", color="black",linewidth=2.0)
+    print("${params.reference_col}")
+    print(result_df["${params.reference_col}"])
+    print(result_df2["${params.reference_col}"])
+    plt.plot(result_df2["${params.reference_col}"], result_df2["${params.reference_col}"], label="Reference", color="black",linewidth=2.0)
 
     models = []
     r2_values = []
@@ -219,15 +219,18 @@ process analyze_mobley {
         # Calculate and plot a linear trendline
         trendline = np.polyfit(result_df["${params.reference_col}"], result_df[col], 1)
         plt.plot(result_df["${params.reference_col}"], np.polyval(trendline, result_df["${params.reference_col}"]), label=col)
-    # Creating DataFrame
-    #data = {'R2': r2_values, 'MAD' : mad_values, 'MRD' : mrd_values}
-    data = {'R2': r2_values, 'MAD' : mad_values,}
-    stats = pd.DataFrame(data, index=models)
-    stats = stats.round(3)
-    # Displaying the DataFrame
-    #stats = stats.sort_values(by='MRD', ascending=False)
-    print(stats)
-    stats.to_csv("stats.csv", index_label='Model')
+    # Calculate the mean absolute deviation
+    result_df2['absolute_deviation'] = abs(result_df2['PC+dG*(solv)(kcal/mol)'] - result_df2["${params.reference_col}"])
+
+    # Filter by the desired 'partial_charge_method' values
+    selected_charge_methods = ['am1bcc', 'gasteiger', 'RESP']
+    filtered_df = result_df2[result_df2['partial_charge_method'].isin(selected_charge_methods)]
+
+    # Calculate the mean absolute deviation for each 'partial_charge_method'
+    mad_by_charge = filtered_df.groupby('partial_charge_method')['absolute_deviation'].mean()
+
+    print(mad_by_charge)
+    mad_by_charge.to_csv("stats.csv", header=True, index=True)
 
 
     plt.xlabel("${params.reference_col}", fontsize=20)
