@@ -107,7 +107,7 @@ log.info """\
                                         "\"${params.structure_col}\"":"\"${row."${params.structure_col}"}\""]
                 ["\"${row."${params.id_col}"}\"":tumor_reads]
             }
-        solventListChannel = Channel.fromPath( params.solvent_path ).splitCsv(header: true,limit: 2).map { 
+        solventListChannel = Channel.fromPath( params.solvent_path ).splitCsv(header: true,limit: 4).map { 
             row -> [row.NAME, row.SMILES, row.FF, row.TEMP, row.DIEPS, row.DENSITY]
         }
         solventListChannel.view()

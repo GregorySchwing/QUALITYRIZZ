@@ -219,6 +219,36 @@ process analyze_mobley {
         # Calculate and plot a linear trendline
         trendline = np.polyfit(result_df["${params.reference_col}"], result_df[col], 1)
         plt.plot(result_df["${params.reference_col}"], np.polyval(trendline, result_df["${params.reference_col}"]), label=col)
+
+
+    # Convert relevant columns to numeric
+    result_df2['PC+dG*(solv)(kcal/mol)'] = pd.to_numeric(result_df2['PC+dG*(solv)(kcal/mol)'], errors='coerce')
+    result_df2['experimentalvalue(kcal/mol)'] = pd.to_numeric(result_df2['experimentalvalue(kcal/mol)'], errors='coerce')
+
+    # Plotting
+    fig, ax = plt.subplots()
+    import seaborn as sns
+    # Define markers for each charge group
+    markers = {'am1bcc': 'o', 'gasteiger': 's', 'RESP': '^'}
+
+    # Loop through each combination of 'partial_charge_method' and 'solvent'
+    for (charge_method, solvent), group in result_df2.groupby(['partial_charge_method', 'solvent']):
+        marker = markers.get(charge_method, 'o')  # Default to 'o' if charge_method is not found
+        sns.regplot(
+            x=group['experimentalvalue(kcal/mol)'],
+            y=group['PC+dG*(solv)(kcal/mol)'],
+            label=f'{charge_method} - {solvent}',
+            marker=marker,
+            ax=ax
+        )
+
+    # Add labels and legend
+    ax.set_xlabel('Experimental Value (kcal/mol)')
+    ax.set_ylabel('PC+dG*(solv) (kcal/mol)')
+    ax.legend()
+    # Save the plot as a PNG file
+    plt.savefig("results.png")
+
     # Calculate the mean absolute deviation
     result_df2['absolute_deviation'] = abs(result_df2['PC+dG*(solv)(kcal/mol)'] - result_df2["${params.reference_col}"])
 
@@ -231,15 +261,6 @@ process analyze_mobley {
 
     print(stats)
     stats.to_csv("stats.csv", header=True, index=True)
-
-
-    plt.xlabel("${params.reference_col}", fontsize=20)
-    plt.ylabel("PC+dG*(ΔGsolv)(kcal/mol)", fontsize=20)
-    plt.legend()
-    plt.grid(True)
-
-    # Save the plot as a PNG file
-    plt.savefig("results.png")
     """
 }
 
