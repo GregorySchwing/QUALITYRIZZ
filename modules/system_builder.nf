@@ -232,8 +232,12 @@ process build_ligand_qm {
     else:
         [input_conformer] = extract_conformers(openff_mol_3D)
 
+        #qc_data_settings = ESPSettings(
+        #    method="hf", basis="6-31G*", grid_settings=MSKGridSettings(),
+        #)
+
         qc_data_settings = ESPSettings(
-            method="hf", basis="6-31G*", grid_settings=MSKGridSettings(),
+            method="hf", basis="sto-3g", grid_settings=MSKGridSettings(),
         )
 
         conformer, grid, esp, electric_field = Psi4ESPGenerator.generate(
