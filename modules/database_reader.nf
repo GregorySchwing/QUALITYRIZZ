@@ -46,6 +46,7 @@ process toJson {
     container "${params.container__openff_toolkit}"
     publishDir "${params.output_folder}/${params.database}/json", mode: 'copy', overwrite: true
     cpus 1
+    memory = '1G'
     debug false
     input:
     val pathToDatabase
