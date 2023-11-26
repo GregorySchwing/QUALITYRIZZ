@@ -129,7 +129,9 @@ process build_ligand_list {
 process build_ligand_qm {
     container "${params.container__openff_toolkit}"
     publishDir "${params.output_folder}/${params.database}/systems/${pathToJson.baseName}_${partial_charge_method}", mode: 'copy', overwrite: true
-
+    cpus 8
+    memory = '16G'
+    clusterOptions = '-q primary'
     debug true
     input:
     tuple path(pathToJson), val(partial_charge_method)
