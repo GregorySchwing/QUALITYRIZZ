@@ -195,7 +195,6 @@ process analyze_mobley {
     print("${params.reference_col}")
     print(result_df["${params.reference_col}"])
     print(result_df2["${params.reference_col}"])
-    plt.plot(result_df2["${params.reference_col}"], result_df2["${params.reference_col}"], label="Reference", color="black",linewidth=2.0)
 
     models = []
     r2_values = []
@@ -226,7 +225,7 @@ process analyze_mobley {
     result_df2['experimentalvalue(kcal/mol)'] = pd.to_numeric(result_df2['experimentalvalue(kcal/mol)'], errors='coerce')
 
     # Plotting
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(10, 6))
     import seaborn as sns
     # Define markers for each charge group
     markers = {'am1bcc': 'o', 'gasteiger': 's', 'RESP': '^'}
@@ -241,14 +240,15 @@ process analyze_mobley {
             marker=marker,
             ax=ax
         )
+    plt.plot(result_df2["${params.reference_col}"], result_df2["${params.reference_col}"], color='black', linewidth=2, linestyle='--', label='Reference')
 
     # Add labels and legend
     ax.set_xlabel('Experimental Value (kcal/mol)')
     ax.set_ylabel('PC+dG*(solv) (kcal/mol)')
-    ax.legend()
-    # Save the plot as a PNG file
-    plt.savefig("results.png")
 
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    # Save the plot as a PNG file
+    fig.savefig('results.png', bbox_inches='tight')
     # Calculate the mean absolute deviation
     result_df2['absolute_deviation'] = abs(result_df2['PC+dG*(solv)(kcal/mol)'] - result_df2["${params.reference_col}"])
 
