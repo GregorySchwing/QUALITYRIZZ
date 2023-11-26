@@ -107,10 +107,12 @@ log.info """\
         input_dict2 = Channel.fromPath(params.database_path)
             .splitCsv(header: true, limit: params.solute_samples)
             .flatMap { row ->
-                def tumor_reads = ["\"${params.reference_col}\"":"\"${row."${params.reference_col}"}\"", 
-                                        "\"${params.structure_col}\"":"\"${row."${params.structure_col}"}\""]
-                ["\"${row."${params.id_col}"}\"":tumor_reads]
+                def tumor_reads =  '{' + "\"${params.reference_col}\"" + ': ' + "\"${row."${params.reference_col}"}\"" + ', ' +  
+                                        "\"${params.structure_col}\"" + ': ' + "\"${row."${params.structure_col}"}\"" + '}'
+                ['{' + "\"${row."${params.id_col}"}\"" + ': ' + tumor_reads  + '}']
             }
+        //input_dict2.view()
+ 
         solventListChannel = Channel.fromPath( params.solvent_path ).splitCsv(header: true,limit: 4).map { 
             row -> [row.NAME, row.SMILES, row.FF, row.TEMP, row.DIEPS, row.DENSITY]
         }
