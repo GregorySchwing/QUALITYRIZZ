@@ -21,13 +21,13 @@
 #SBATCH -t 14-0:0:0
 
 # List assigned GPU: 
-source "${HOME}/mambaforge/etc/profile.d/mamba.sh"
-source activate nextflow
-module load singularity
+#source "${HOME}/mambaforge/etc/profile.d/mamba.sh"
+#source activate nextflow
+#module load singularity
 export NXF_EXECUTOR=slurm
 export NXF_OPTS="-Xms2G -Xmx8G" 
 mkdir -p ${HOME}/singularity_cache
 export NXF_SINGULARITY_CACHEDIR=${HOME}/singularity_cache
 mkdir -p ${HOME}/xdr
 export XDG_RUNTIME_DIR=${HOME}/xdr
-nextflow run -profile slurm . --param_name nextflow.config
+nextflow run -profile slurm . --param_name nextflow.config -resume
