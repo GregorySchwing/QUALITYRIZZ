@@ -96,7 +96,7 @@ log.info """\
         waterModels = ["tip3p_fb-1.1.1.offxml","tip3p-1.0.1.offxml","opc3-1.0.1.offxml","spce-1.0.0.offxml"]
         temperatures = ["298.15"]
 
-        input = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: 2).map { 
+        input = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: 1).map { 
             row -> [row."${params.id_col}", row."${params.structure_col}", row."${params.reference_col}"]
         }
 

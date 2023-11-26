@@ -282,6 +282,115 @@ process build_ligand_qm {
     """
 }
 
+process build_ligand_qm_geo {
+    container "${params.container__openff_toolkit}"
+    publishDir "${params.output_folder}/${params.database}/systems/${pathToJson.baseName}", mode: 'copy', overwrite: true
+
+    debug true
+    input:
+    path pathToJson
+    output:
+    val(pathToJson.baseName), emit: molecule
+    path("ligand.prmtop"), emit: prm
+    path("ligand.crd"), emit: crd
+    path("ligand.mol2"), emit: mol2
+    tuple val(pathToJson.baseName), path("ligand.prmtop"), path("ligand.crd"), emit: system
+    script:
+    """
+    #!/usr/bin/env python
+    import json
+    # Open and read the JSON file
+    with open("${pathToJson}", "r") as file:
+        print("reading ${pathToJson}")
+        data = json.load(file)
+    key=next(iter(data))
+    smiles=data[key]["SMILES"]
+    # Imports from the toolkit
+    from openff.toolkit import ForceField, Molecule, Topology
+    from openff.units import Quantity, unit
+    from openff.interchange import Interchange
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+    from rdkit.Chem import rdmolfiles
+
+    from openff.recharge.charges.library import (
+        LibraryChargeCollection,
+        LibraryChargeGenerator,
+    )
+    from openff.recharge.charges.resp import generate_resp_charge_parameter
+    from openff.recharge.charges.resp.solvers import IterativeSolver,SciPySolver
+    from openff.recharge.esp import ESPSettings
+    from openff.recharge.esp.psi4 import Psi4ESPGenerator
+    from openff.recharge.esp.storage import MoleculeESPRecord
+    from openff.recharge.grids import MSKGridSettings
+    from openff.recharge.utilities.molecule import extract_conformers
+
+    from parmed.formats.registry import load_file
+    from parmed.formats.mol2 import Mol2File
+
+    def embed(mol, seed=None):
+        params = AllChem.ETKDGv2()
+        if seed is not None:
+            params.randomSeed = seed
+        else:
+            params.randomSeed = 123
+        AllChem.EmbedMolecule(mol, params)
+        return mol
+
+    forcefield = ForceField("openff-2.1.0.offxml")
+    openff_mol = Molecule.from_smiles(smiles,allow_undefined_stereo=True)
+    rdmol = openff_mol.to_rdkit()
+    rdmol3D = embed(rdmol,123)
+    openff_mol_3D = Molecule.from_rdkit(rdmol3D,allow_undefined_stereo=True)
+    #openff_mol.generate_conformers(n_conformers=1)
+    qcemol = openff_mol_3D.to_qcschema()
+
+    import qcelemental as qcel
+    print(qcemol)
+    print(qcemol.geometry)
+    #print(dir(qcemol))
+    import qcengine as qcng
+    import qcelemental as qcel
+
+    inp = qcel.models.AtomicInput(
+    molecule=qcemol,
+    driver="energy",
+    model={"method": "SCF", "basis": "sto-3g"},
+    keywords={"scf_type": "df"}
+    )
+
+    inp = qcel.models.AtomicInput(
+        schema_name="qcschema_input",
+        schema_version=1,
+        molecule=qcemol,
+        driver="gradient",
+        model={"method": "SCF", "basis": "sto-3g"},
+        keywords={"scf_type": "df"}
+    )
+
+    ret = qcng.compute(inp, "psi4")
+    print(ret)
+    print(ret.return_result)
+    print(ret.provenance)
+    print(ret.molecule.geometry)
+    openff_mol_qc = Molecule.from_qcschema(ret.molecule,allow_undefined_stereo=True)
+
+    # Create a PDB file
+    #writer = rdmolfiles.MolToPDBFile(rdmol3D, "ligand.pdb")
+    # Load the topology from a PDB file and `Molecule` objects
+    topology = openff_mol_qc.to_topology()
+
+    interchange = Interchange.from_smirnoff(
+        force_field=forcefield,
+        topology=topology,
+    )
+    interchange.to_prmtop("ligand.prmtop")
+    interchange.to_inpcrd("ligand.crd")
+    struct = load_file('ligand.prmtop', xyz='ligand.crd')
+    Mol2File.write(struct, "ligand.mol2")
+    """
+}
+
 process build_water_parameters {
     container "${params.container__openff_toolkit}"
     publishDir "${params.output_folder}/${params.database}/water_parameters/${model}", mode: 'copy', overwrite: true
@@ -862,8 +971,10 @@ workflow build_ligands {
     // Process each JSON file asynchronously
     //build_ligand(extract_database_ch)
     build_ligand_qm(extract_database_ch)
+    //build_ligand_qm_geo(extract_database_ch)
     emit:
     //system = build_ligand.out.system
+    //system = build_ligand_qm_geo.out.system
     system = build_ligand_qm.out.system
 }
 
