@@ -257,10 +257,22 @@ process analyze_mobley {
     filtered_df = result_df2[result_df2['partial_charge_method'].isin(selected_charge_methods)]
 
     # Calculate the mean absolute deviation for each 'partial_charge_method'
-    stats = filtered_df.groupby(['partial_charge_method', 'solvent'])['absolute_deviation'].mean()
+    grouped_stats = filtered_df.groupby(['partial_charge_method', 'solvent'])['absolute_deviation'].mean()
+    grouped_stats_std = filtered_df.groupby(['partial_charge_method', 'solvent'])['absolute_deviation'].std()
 
+    # Calculate correlation coefficients
+    correlation_coefficients = (
+        result_df2.groupby(['partial_charge_method', 'solvent'])
+        .apply(lambda group: group['experimentalvalue(kcal/mol)'].corr(group['PC+dG*(solv)(kcal/mol)']))
+    )
+
+    # Combine both into a single DataFrame
+    stats = pd.DataFrame({'MAD': grouped_stats, 'MAD_STDEV':grouped_stats_std, 'Correlation_Coefficients': correlation_coefficients})
     print(stats)
-    stats.to_csv("stats.csv", header=True, index=True)
+
+    # Write to a single CSV file
+    stats.to_csv('stats.csv', header=True, index=True, mode='w', sep=',')
+
     """
 }
 
