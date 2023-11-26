@@ -60,14 +60,17 @@ process toJson {
     import pickle
     import sys
     import json
+    import ast
     import pandas as pd
     from scipy.stats import pearsonr  # Import the pearsonr function
     print(f"Python Version: {sys.version}")
     # Use the pandas read_pickle function to read the DataFrame.
-    print('$pathToDatabase')
-    data = '$pathToDatabase'
-    json_object = json.loads(data)
+    print(r'$pathToDatabase')
+    data = r'$pathToDatabase'
+    json_object = ast.literal_eval(data)
     print(json_object)
+
+    #json_object = json.loads(data)
 
     json_filename="{key}.json".format(key=next(iter(json_object)))
     # Write the dictionary to a JSON file
