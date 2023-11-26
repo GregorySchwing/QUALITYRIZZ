@@ -45,7 +45,7 @@ process depickle {
 process toJson {
     container "${params.container__openff_toolkit}"
     publishDir "${params.output_folder}/${params.database}/json", mode: 'copy', overwrite: true
-
+    cpus 1
     debug false
     input:
     val pathToDatabase
