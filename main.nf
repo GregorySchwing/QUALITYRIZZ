@@ -95,7 +95,7 @@ log.info """\
         //waterModels = ["tip3p_fb-1.1.1.offxml"]
         waterModels = ["tip3p_fb-1.1.1.offxml","tip3p-1.0.1.offxml","opc3-1.0.1.offxml","spce-1.0.0.offxml"]
         temperatures = ["298.15"]
-
+        partial_charge_method = ["gasteiger","am1bcc","RESP"]
         input = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: 1).map { 
             row -> [row."${params.id_col}", row."${params.structure_col}", row."${params.reference_col}"]
         }
@@ -111,6 +111,8 @@ log.info """\
             row -> [row.NAME, row.SMILES, row.FF, row.TEMP, row.DIEPS, row.DENSITY]
         }
         solventListChannel.view()
+        input_dict2.combine(partial_charge_method).view()
+        return
         //waterChannel = Channel.from( waterModels )
         //temperatureChannel = Channel.from( temperatures )
         //solventChannel = solventListChannel.combine(temperatureChannel)

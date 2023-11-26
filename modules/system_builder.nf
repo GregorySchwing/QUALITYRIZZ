@@ -162,15 +162,18 @@ process build_ligand_qm {
         LibraryChargeGenerator,
     )
     from openff.recharge.charges.resp import generate_resp_charge_parameter
-    from openff.recharge.charges.resp.solvers import IterativeSolver,SciPySolver
+    from openff.recharge.charges.resp.solvers import IterativeSolver
     from openff.recharge.esp import ESPSettings
     from openff.recharge.esp.psi4 import Psi4ESPGenerator
     from openff.recharge.esp.storage import MoleculeESPRecord
     from openff.recharge.grids import MSKGridSettings
     from openff.recharge.utilities.molecule import extract_conformers
-
+    from openff.recharge.utilities.molecule import smiles_to_molecule
     from parmed.formats.registry import load_file
     from parmed.formats.mol2 import Mol2File
+
+    import qcelemental as qcel
+    import qcengine as qcng
 
     def embed(mol, seed=None):
         params = AllChem.ETKDGv2()
@@ -185,100 +188,99 @@ process build_ligand_qm {
     openff_mol = Molecule.from_smiles(smiles,allow_undefined_stereo=True)
     rdmol = openff_mol.to_rdkit()
     rdmol3D = embed(rdmol,123)
-    openff_mol_3D = Molecule.from_rdkit(rdmol3D,allow_undefined_stereo=True)
-    #openff_mol.generate_conformers(n_conformers=1)
-    qcemol = openff_mol_3D.to_qcschema()
+    openff_mol_3D = Molecule.from_rdkit(rdmol3D)
 
-    import qcelemental as qcel
-    print(qcemol)
-    print(qcemol.geometry)
-    #print(dir(qcemol))
-    import qcengine as qcng
-    import qcelemental as qcel
 
-    inp = qcel.models.AtomicInput(
-    molecule=qcemol,
-    driver="energy",
-    model={"method": "SCF", "basis": "sto-3g"},
-    keywords={"scf_type": "df"}
+    interchangeb4 = Interchange.from_smirnoff(
+        force_field=forcefield,
+        topology=openff_mol_3D.to_topology(),
     )
-
-    inp = qcel.models.AtomicInput(
-        schema_name="qcschema_input",
-        schema_version=1,
+    interchangeb4.to_inpcrd("ligandb4.crd")
+    interchangeb4.to_prmtop("ligandb4.prmtop")
+    struct = load_file('ligandb4.prmtop', xyz='ligandb4.crd')
+    Mol2File.write(struct, "ligandb4.mol2")
+    geometry = True
+    if(geometry):
+        qcemol = openff_mol_3D.to_qcschema()
+        inp = qcel.models.AtomicInput(
         molecule=qcemol,
-        driver="gradient",
+        driver="energy",
         model={"method": "SCF", "basis": "sto-3g"},
         keywords={"scf_type": "df"}
-    )
+        )
 
-    ret = qcng.compute(inp, "psi4")
-    print(ret)
-    print(ret.return_result)
-    print(ret.provenance)
-    print(ret.molecule.geometry)
-    openff_mol_qc = Molecule.from_qcschema(ret.molecule,allow_undefined_stereo=True)
-    [input_conformer] = extract_conformers(openff_mol_qc)
+        inp = qcel.models.AtomicInput(
+            schema_name="qcschema_input",
+            schema_version=1,
+            molecule=qcemol,
+            driver="gradient",
+            model={"method": "SCF", "basis": "sto-3g"},
+            keywords={"scf_type": "df"},
+            
+        )
 
-    qc_data_settings = ESPSettings(
-        method="hf", basis="6-31G*", grid_settings=MSKGridSettings()
-    )
+        ret = qcng.compute(inp, "psi4")
+        print(ret)
+        print(ret.return_result)
+        print(ret.molecule.geometry)
+        openff_mol_3D = Molecule.from_qcschema(ret.molecule,allow_undefined_stereo=True)
 
-    conformer, grid, esp, electric_field = Psi4ESPGenerator.generate(
-        openff_mol_qc, input_conformer, qc_data_settings, minimize=True
-    )
+    partial_charge_method=$partial_charge_method
 
-    qc_data_record = MoleculeESPRecord.from_molecule(
-        openff_mol_qc, conformer, grid, esp, None, qc_data_settings
-    )
+    if (partial_charge_method != "RESP"):
+        openff_mol_3D.assign_partial_charges(partial_charge_method=partial_charge_method)
+    else:
+        [input_conformer] = extract_conformers(openff_mol_3D)
 
-    #resp_solver = IterativeSolver()
-    # While by default the iterative approach to finding the set of charges that minimize
-    # the RESP loss function as described in the original papers is used, others such as
-    # an experimental one that calls out to SciPy are available, e.g.
-    resp_solver = SciPySolver(method="SLSQP")
+        qc_data_settings = ESPSettings(
+            method="hf", basis="6-31G*", grid_settings=MSKGridSettings(),
+        )
 
-    resp_charge_parameter = generate_resp_charge_parameter(
-        [qc_data_record], resp_solver
-    )
-    resp_charges = LibraryChargeGenerator.generate(
-        openff_mol_qc, LibraryChargeCollection(parameters=[resp_charge_parameter])
-    )
-    import numpy
-    print(f"RESP SMILES         : {resp_charge_parameter.smiles}")
-    print(f"RESP VALUES (UNIQUE): {resp_charge_parameter.value}")
-    print("")
-    print(f"RESP CHARGES        : {numpy.round(resp_charges, 4)}")
+        conformer, grid, esp, electric_field = Psi4ESPGenerator.generate(
+            openff_mol_3D, input_conformer, qc_data_settings, minimize=True
+        )
 
-    print(f"CONFORMER           : {numpy.round(conformer, 4)}")
+        qc_data_record = MoleculeESPRecord.from_molecule(
+            openff_mol_3D, conformer, grid, esp, None, qc_data_settings
+        )
+
+        resp_solver = IterativeSolver()
+        # While by default the iterative approach to finding the set of charges that minimize
+        # the RESP loss function as described in the original papers is used, others such as
+        # an experimental one that calls out to SciPy are available, e.g.
+        # resp_solver = SciPySolver(method="SLSQP")
+
+        resp_charge_parameter = generate_resp_charge_parameter(
+            [qc_data_record], resp_solver
+        )
+        resp_charges = LibraryChargeGenerator.generate(
+            openff_mol_3D, LibraryChargeCollection(parameters=[resp_charge_parameter])
+        )
+        import numpy
+        print(f"RESP SMILES         : {resp_charge_parameter.smiles}")
+        print(f"RESP VALUES (UNIQUE): {resp_charge_parameter.value}")
+        print("")
+        print(f"RESP CHARGES        : {numpy.round(resp_charges, 4)}")
+
+        print(f"CONFORMER           : {numpy.round(conformer, 4)}")
+        # Assign partial charges from a list-like object
+        openff_mol_3D.partial_charges = numpy.asarray(resp_charges.flatten()) * unit.elementary_charge
+        print(f"MOL CHARGES        : {numpy.round(openff_mol_3D.partial_charges, 4)}")
 
 
-    import numpy as np
-    from openff.toolkit.topology import Molecule
-    from openff.toolkit.typing.engines.smirnoff import ForceField
-    from openff.toolkit.typing.engines.smirnoff.parameters import LibraryChargeHandler
-
-
-    # Assign partial charges from a list-like object
-    openff_mol_qc.partial_charges = np.asarray(resp_charges.flatten()) * unit.elementary_charge
-    print(f"MOL CHARGES        : {numpy.round(openff_mol_qc.partial_charges, 4)}")
-
-    library_charge_type = LibraryChargeHandler.LibraryChargeType.from_molecule(openff_mol_qc)
-    forcefield["LibraryCharges"].add_parameter(parameter=library_charge_type)
-
-    # Create a PDB file
-    #writer = rdmolfiles.MolToPDBFile(rdmol3D, "ligand.pdb")
-    # Load the topology from a PDB file and `Molecule` objects
-    topology = openff_mol_qc.to_topology()
-
+    print(openff_mol_3D)
     interchange = Interchange.from_smirnoff(
         force_field=forcefield,
-        topology=topology,
+        topology=openff_mol_3D.to_topology(),
+        charge_from_molecules=[openff_mol_3D]
     )
+
     interchange.to_prmtop("ligand.prmtop")
     interchange.to_inpcrd("ligand.crd")
     struct = load_file('ligand.prmtop', xyz='ligand.crd')
+    # Used for optional GAFFication
     Mol2File.write(struct, "ligand.mol2")
+
     """
 }
 
