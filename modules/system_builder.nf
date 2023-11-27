@@ -215,11 +215,8 @@ process build_ligand_qm {
 
     partial_charge_method="$partial_charge_method"
     from openff.toolkit.utils.toolkits import AmberToolsToolkitWrapper
-    from openff.toolkit.utils.toolkits import toolkit_registry_manager, ToolkitRegistry
     if (partial_charge_method != "RESP"):
-        #openff_mol_3D.assign_partial_charges(partial_charge_method=partial_charge_method)
-        with toolkit_registry_manager(ToolkitRegistry([AmberToolsToolkitWrapper()])):
-            openff_mol_3D.assign_partial_charges(partial_charge_method=partial_charge_method)
+        openff_mol_3D.assign_partial_charges(partial_charge_method=partial_charge_method,toolkit_registry=AmberToolsToolkitWrapper())
     else:
         [input_conformer] = extract_conformers(openff_mol_3D)
 
