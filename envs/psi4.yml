@@ -5,6 +5,7 @@ channels:
 dependencies:
   - conda-forge::psi4>=1.8.2
   - conda-forge::openff-toolkit
+  - conda-forge::ambertools
   - conda-forge::openff-recharge
   - conda-forge::pydantic<2
   - gxx_linux-64

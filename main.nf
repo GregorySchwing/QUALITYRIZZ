@@ -85,6 +85,8 @@ log.info """\
          """
          .stripIndent()
 
+
+    // Supported charge types : 'am1bcc', 'am1-mulliken', 'gasteiger', 'resp'
     // Show help message if the user specifies the --help flag at runtime
     // or if any required params are not provided
     if ( params.help || params.database == null){
@@ -99,7 +101,7 @@ log.info """\
         //waterModels = ["tip3p_fb-1.1.1.offxml"]
         waterModels = ["tip3p_fb-1.1.1.offxml","tip3p-1.0.1.offxml","opc3-1.0.1.offxml","spce-1.0.0.offxml"]
         temperatures = ["298.15"]
-        partial_charge_method = ["gasteiger","am1bcc","RESP"]
+        partial_charge_method = ["gasteiger","am1bcc","am1-mulliken","RESP"]
         input = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: 1).map { 
             row -> [row."${params.id_col}", row."${params.structure_col}", row."${params.reference_col}"]
         }

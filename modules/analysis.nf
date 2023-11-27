@@ -186,6 +186,7 @@ process analyze_mobley {
     if (normalize):
         result_df2 = (result_df2 - result_df2.min()) / (result_df2.max() - result_df2.min())
 
+    print(result_df2.to_string())
     result_df2.to_csv("results.csv")
 
 
