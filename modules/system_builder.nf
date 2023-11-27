@@ -198,15 +198,14 @@ process build_ligand_qm {
         keywords={"scf_type": "df"}
         )
 
-        inp = qcel.models.AtomicInput(
-            schema_name="qcschema_input",
-            schema_version=1,
-            molecule=qcemol,
-            driver="gradient",
-            model={"method": "SCF", "basis": "sto-3g"},
-            keywords={"scf_type": "df"},
-            
-        )
+        #inp = qcel.models.AtomicInput(
+        #    schema_name="qcschema_input",
+        #    schema_version=1,
+        #    molecule=qcemol,
+        #    driver="gradient",
+        #    model={"method": "SCF", "basis": "sto-3g"},
+        #    keywords={"scf_type": "df"},
+        #)
 
         ret = qcng.compute(inp, "psi4")
         print(ret)
