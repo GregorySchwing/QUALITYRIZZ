@@ -206,8 +206,8 @@ process build_ligand_qm {
             model={"method": "SCF", "basis": "sto-3g"},
             keywords={"scf_type": "df"},
         )
-
-        ret = qcng.compute(input_data=inp, program="psi4",retries=100)
+        task_config = {"retries":100}
+        ret = qcng.compute(inp, "psi4",task_config=task_config)
         print(ret)
         print(ret.return_result)
         print(ret.molecule.geometry)
