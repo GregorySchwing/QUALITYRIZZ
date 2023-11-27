@@ -7,4 +7,9 @@ dependencies:
   - conda-forge::openff-toolkit
   - conda-forge::openff-recharge
   - conda-forge::pydantic<2
+  - gxx_linux-64
+  - seaborn
+  - pip
+  - pip:
+    - "git+https://github.com/GregorySchwing/ParmEd.git@1drism"
 
