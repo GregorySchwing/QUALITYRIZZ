@@ -240,7 +240,8 @@ process build_ligand_qm {
         )
 
         conformer, grid, esp, electric_field = Psi4ESPGenerator.generate(
-            openff_mol_3D, input_conformer, qc_data_settings, minimize=True
+            #openff_mol_3D, input_conformer, qc_data_settings, minimize=True
+            openff_mol_3D, input_conformer, qc_data_settings, minimize=False
         )
 
         qc_data_record = MoleculeESPRecord.from_molecule(
