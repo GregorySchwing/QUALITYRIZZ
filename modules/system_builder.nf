@@ -131,7 +131,6 @@ process build_ligand_qm {
     publishDir "${params.output_folder}/${params.database}/systems/${pathToJson.baseName}_${partial_charge_method}", mode: 'copy', overwrite: true
     cpus 1
     memory = '8G'
-    clusterOptions = '-q primary'
     debug true
     input:
     tuple path(pathToJson), val(partial_charge_method)
