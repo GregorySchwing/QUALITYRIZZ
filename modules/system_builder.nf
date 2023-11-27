@@ -188,7 +188,7 @@ process build_ligand_qm {
     rdmol = openff_mol.to_rdkit()
     rdmol3D = embed(rdmol,123)
     openff_mol_3D = Molecule.from_rdkit(rdmol3D)
-    geometry = True
+    geometry = False
     if(geometry):
         qcemol = openff_mol_3D.to_qcschema()
         inp = qcel.models.AtomicInput(
