@@ -113,22 +113,29 @@ log.info """\
                                         "\"${params.structure_col}\"" + ': ' + "\"${row."${params.structure_col}"}\"" + '}'
                 ['{' + "\"${row."${params.id_col}"}\"" + ': ' + tumor_reads  + '}']
             }
-        //input_dict2.view()
- 
+
+        soluteListChannel = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: params.solute_samples).map { 
+            row -> [row."${params.id_col}", row."${params.structure_col}", row."${params.reference_col}"]
+        }
+        //soluteListChannel.view()
         solventListChannel = Channel.fromPath( params.solvent_path ).splitCsv(header: true,limit: 4).map { 
             row -> [row.NAME, row.SMILES, row.FF, row.TEMP, row.DIEPS, row.DENSITY]
         }
-        solventListChannel.view()
+        //solventListChannel.view()
         build_solvents(solventListChannel) 
-        database=extract_database_channel(input_dict2)
-        molecules_and_charges = database.combine(partial_charge_method)
+        //database=extract_database_channel(input_dict2)
+        molecules_and_charges = soluteListChannel.combine(partial_charge_method)
+        molecules_and_charges.view()
         results = build_ligands(molecules_and_charges)
             | combine(build_solvents.out.solvent) 
             | minimize_ligands
             | rism_solvation
             | collect
-
-        analyze_list(results,database.collect())
+            | groupTuple
+            | view
+        return
+        
+        analyze_list(results,soluteListChannel.collect())
     } else {
         helpMessage()
     }

@@ -128,26 +128,20 @@ process build_ligand_list {
 
 process build_ligand_qm {
     container "${params.container__openff_toolkit}"
-    publishDir "${params.output_folder}/${params.database}/systems/${pathToJson.baseName}_${partial_charge_method}", mode: 'copy', overwrite: true
-    debug true
+    publishDir "${params.output_folder}/${params.database}/systems/${molecule}_${partial_charge_method}", mode: 'copy', overwrite: true
+    debug false
     input:
-    tuple path(pathToJson), val(partial_charge_method)
+    tuple val(molecule), val(smiles), val(expt_val), val(partial_charge_method)
     output:
-    val(pathToJson.baseName), emit: molecule
+    val(molecule), emit: molecule
     path("ligand.prmtop"), emit: prm
     path("ligand.crd"), emit: crd
     path("ligand.mol2"), emit: mol2
-    tuple val(pathToJson.baseName), path("ligand.prmtop"), path("ligand.crd"), val(partial_charge_method), emit: system
+    tuple val(molecule), path("ligand.prmtop"), path("ligand.crd"), val(partial_charge_method), emit: system
     script:
     """
     #!/usr/bin/env python
-    import json
-    # Open and read the JSON file
-    with open("${pathToJson}", "r") as file:
-        print("reading ${pathToJson}")
-        data = json.load(file)
-    key=next(iter(data))
-    smiles=data[key]["SMILES"]
+    smiles="${smiles}"
     # Imports from the toolkit
     from openff.toolkit import ForceField, Molecule, Topology
     from openff.units import Quantity, unit
