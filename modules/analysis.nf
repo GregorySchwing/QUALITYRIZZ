@@ -105,14 +105,16 @@ process analyze {
 
 process analyze_mobley {
     container "${params.container__openff_toolkit}"
-    publishDir "${params.output_folder}/${params.database}/results", mode: 'copy', overwrite: false
+    publishDir "${params.output_folder}/${params.database}/results", mode: 'copy', overwrite: true
 
     debug true
     input:
         path(results)
         path(database)
     output:
-    path("*")
+        path("merged_results.csv")
+        path("stats.csv")
+        path("results.png")
     script:
     """
     #!/usr/bin/env python
@@ -128,7 +130,7 @@ process analyze_mobley {
     print(df_results.head())
     # Assuming your first dataframe is df1 and the second one is df2
     result_df2 = pd.merge(df_database, df_results, on='molecule')
-    result_df2.to_csv("results.csv")
+    result_df2.to_csv("merged_results.csv")
 
     # Create a scatter plot
     plt.figure(figsize=(10, 6))
@@ -165,7 +167,7 @@ process analyze_mobley {
     result_df2['absolute_deviation'] = abs(result_df2['PC+dG*(solv)(kcal/mol)'] - result_df2["${params.reference_col}"])
 
     # Filter by the desired 'partial_charge_method' values
-    selected_charge_methods = ['am1bcc', 'gasteiger', 'RESP']
+    selected_charge_methods = ['am1bcc', 'am1-mulliken', 'gasteiger', 'RESP']
     filtered_df = result_df2[result_df2['partial_charge_method'].isin(selected_charge_methods)]
 
     # Calculate the mean absolute deviation for each 'partial_charge_method'
