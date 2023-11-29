@@ -100,8 +100,10 @@ log.info """\
 
         //waterModels = ["tip3p_fb-1.1.1.offxml"]
         waterModels = ["tip3p_fb-1.1.1.offxml","tip3p-1.0.1.offxml","opc3-1.0.1.offxml","spce-1.0.0.offxml"]
+        waterModels = ["tip3p_fb-1.1.1.offxml"]
         temperatures = ["298.15"]
         partial_charge_method = ["gasteiger","am1bcc","am1-mulliken","RESP"]
+        partial_charge_method = ["RESP"]
         input = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: 1).map { 
             row -> [row."${params.id_col}", row."${params.structure_col}", row."${params.reference_col}"]
         }
@@ -130,11 +132,10 @@ log.info """\
             | combine(build_solvents.out.solvent) 
             | minimize_ligands
             | rism_solvation
-            | collect
-            | groupTuple
-            | view
+            | collectFile(name:'results.csv', newLine:true, storeDir:"${params.output_folder}"+File.separator+"${params.database}"){ item ->
+                [ "results.csv", item[0]+','+item[1]+','+item[2]+','+item[3]+','+item[4] ]
+            }
         return
-        
         analyze_list(results,soluteListChannel.collect())
     } else {
         helpMessage()

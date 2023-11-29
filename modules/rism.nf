@@ -117,11 +117,119 @@ process solvation {
     """
 }
 
+process write_solvation_script {
+    container "${params.container__biobb_amber}"
+
+    debug false
+    input:
+    tuple val(molecule), path(prm), path(crd), val(partial_charge_method), val(model), val(temperature), path(xvv), path(pdb), path(rst)
+    output:
+    tuple val(molecule), path(prm), path(crd), val(partial_charge_method), val(model), val(temperature), path(xvv), path(pdb), path(rst), emit: system
+    path("rism.sh"), emit: bash_script
+
+    script:
+    """
+    #!/usr/bin/env python
+    print("Hello from ${molecule} ${prm} ${crd} ${model} ${temperature} ${xvv} ${pdb} ${rst}")
+    def setup_calculation(output_file_prefix="3DRISM",
+                        closure='pse3', write_g=False, write_h=False,
+                        write_c=False,
+                        write_u=False, write_asymp=False,
+                        noasympcorr=False,
+                        buffer_distance=25.0,
+                        solvbox=False,
+                        grdspc=(0.5, 0.5, 0.5),
+                        tolerance=[1e-5], polar_decomp=False,
+                        verbose=2, maxstep=500,
+                        rism3d_path='rism3d.snglpnt'):
+
+        grdspc = ','.join(map(str, grdspc))
+        if solvbox:
+            solvbox = ','.join(map(str, solvbox))
+        run_flags_list = [rism3d_path,
+            '--pdb', "${pdb}",
+            '--prmtop', "${prm}",
+            '--rst', "${rst}",
+            '--xvv', "${xvv}",
+            '--grdspc', grdspc,]
+        run_flags_list.extend(['--tolerance'] + tolerance)
+        run_flags_list.extend(['--closure', closure])
+        if solvbox:
+            run_flags_list.extend(['--solvbox', solvbox])
+        else:
+            run_flags_list.extend(['--buffer', str(buffer_distance)])
+        if write_g:
+            run_flags_list.extend(['--guv',
+                                        'g_{}'.format(output_file_prefix)])
+        if write_h:
+            run_flags_list.extend(['--huv',
+                                        'h_{}'.format(output_file_prefix)])
+        if write_c:
+            run_flags_list.extend(['--cuv',
+                                        'c_{}'.format(output_file_prefix)])
+        if write_u:
+            run_flags_list.extend(['--uuv',
+                                        'u_{}'.format(output_file_prefix)])
+        if write_asymp:
+            run_flags_list.extend(['--asymp',
+                                        'a_{}'.format(output_file_prefix)])
+        if noasympcorr:
+            run_flags_list.extend(['--noasympcorr'])
+        if polar_decomp:
+            run_flags_list.extend(['--polarDecomp'])
+        if verbose:
+            run_flags_list.extend(['--verbose'])
+            run_flags_list.extend(['{}'.format(verbose)])
+        if maxstep:
+            run_flags_list.extend(['--maxstep'])
+            run_flags_list.extend(['{}'.format(maxstep)])
+        run_flags_list.extend(['--pc+'])
+        return run_flags_list
+
+    run_flags_list = setup_calculation()
+
+    #print(run_flags_list)
+    # Convert non-string elements to strings and create a space-separated string
+    space_separated_string = ' '.join(map(str, run_flags_list))
+
+    RISM_SCRPT = '''#!/bin/bash
+    {run_command} > rism.out
+    '''
+    my_string=RISM_SCRPT.format(run_command=space_separated_string)
+    # Open the file in write mode ('w' or 'wt' for text mode)
+    with open("rism.sh", 'w') as file:
+        # Write the string to the file
+        file.write(my_string)
+    """
+}
+
+
+process run_solvation_script {
+    container "${params.container__biobb_amber}"
+    publishDir "${params.output_folder}/${params.database}/3DRISM/${molecule}_${partial_charge_method}_${model}_${temperature}", mode: 'copy', overwrite: false
+
+    debug false
+    input:
+    tuple val(molecule), path(prm), path(crd), val(partial_charge_method), val(model), val(temperature), path(xvv), path(pdb), path(rst)
+    path(bash_script)
+    output:
+    tuple val(molecule), val(partial_charge_method), val(model), val(temperature), env(chemical_potential), emit: system
+    tuple path(bash_script), path("rism.out"), emit: files
+    shell:
+    """
+    source !{bash_script}
+    cat rism.out
+    chemical_potential=\$(awk '/^rism_excessChemicalPotentialPCPLUS/ {print \$2}' rism.out)
+    """
+}
+
 workflow rism_solvation {
     take:
     minimized_systems
     main:
-    solvation(minimized_systems)
+    write_solvation_script(minimized_systems) |
+    run_solvation_script
+
     emit:
-    json = solvation.out.json
+    system = run_solvation_script.out.system
 }
