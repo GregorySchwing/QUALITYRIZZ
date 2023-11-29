@@ -100,10 +100,10 @@ log.info """\
 
         //waterModels = ["tip3p_fb-1.1.1.offxml"]
         waterModels = ["tip3p_fb-1.1.1.offxml","tip3p-1.0.1.offxml","opc3-1.0.1.offxml","spce-1.0.0.offxml"]
-        waterModels = ["tip3p_fb-1.1.1.offxml"]
+        //waterModels = ["tip3p_fb-1.1.1.offxml"]
         temperatures = ["298.15"]
         partial_charge_method = ["gasteiger","am1bcc","am1-mulliken","RESP"]
-        partial_charge_method = ["RESP"]
+        //partial_charge_method = ["RESP"]
         soluteListChannel = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: params.solute_samples,quote:'"').map { 
             row -> [row."${params.id_col}", row."${params.structure_col}", row."${params.reference_col}"]
         }
