@@ -121,10 +121,9 @@ log.info """\
             | minimize_ligands
             | rism_solvation
             | collectFile(name:'results.csv', newLine:false, keepHeader:true, storeDir:"${params.output_folder}"+File.separator+"${params.database}"){ item ->
-                [ "results.csv", "molecule,elec_meth,solvent,temp,chempot\n"+item[0]+','+item[1]+','+item[2]+','+item[3]+','+item[4]+"\n" ]
+                [ "results.csv", "molecule,partial_charge_method,solvent,temp,PC+dG*(solv)(kcal/mol)\n"+item[0]+','+item[1]+','+item[2]+','+item[3]+','+item[4]+"\n" ]
             } 
-        return
-        analyze_list(results,soluteListChannel.collect())
+        analyze_list(results,params.database_path)
     } else {
         helpMessage()
     }

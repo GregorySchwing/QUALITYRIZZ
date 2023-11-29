@@ -112,64 +112,29 @@ process analyze_mobley {
         path(results)
         path(database)
     output:
+    path("*")
     script:
     """
     #!/usr/bin/env python
-    import json
     import pandas as pd
     import matplotlib.pyplot as plt
     import numpy as np
     from scipy.stats import pearsonr  # Import the pearsonr function
-    #${params.reference_col}
     # Read the CSV file into a DataFrame
     df_database = pd.read_csv("${database}")
     print(df_database.head())
     # Read the CSV file into a DataFrame
     df_results = pd.read_csv("${results}")
     print(df_results.head())
-    quit()
-    normalize = False
-    if (normalize):
-        result_df2 = (result_df2 - result_df2.min()) / (result_df2.max() - result_df2.min())
-
-    print(result_df2.to_string())
+    # Assuming your first dataframe is df1 and the second one is df2
+    result_df2 = pd.merge(df_database, df_results, on='molecule')
     result_df2.to_csv("results.csv")
-
 
     # Create a scatter plot
     plt.figure(figsize=(10, 6))
     # Plotting
     print("${params.reference_col}")
-    print(result_df["${params.reference_col}"])
     print(result_df2["${params.reference_col}"])
-
-    models = []
-    r2_values = []
-    mad_values = []
-    mrd_values = []
-
-    #markers = ['+', 'x', '.', '1']
-    filtered_columns = [col for col in result_df.columns if "${params.reference_col}" not in col]
-    for col in filtered_columns:
-        # Calculate the Pearson correlation coefficient
-        correlation_coefficient, _ = pearsonr(result_df[col], result_df["${params.reference_col}"])
-        print(col,"R=",correlation_coefficient, _)
-        # Calculate Mean Absolute Deviation
-        mad = np.mean(np.abs(result_df[col]-result_df["${params.reference_col}"]))
-        models.append(col)
-        r2_values.append(correlation_coefficient)
-        mad_values.append(mad)
-        # Calculate Mean Absolute Deviation
-        print(result_df["${params.reference_col}"], result_df[col])
-        plt.scatter(result_df["${params.reference_col}"], result_df[col], label=col)
-        # Calculate and plot a linear trendline
-        trendline = np.polyfit(result_df["${params.reference_col}"], result_df[col], 1)
-        plt.plot(result_df["${params.reference_col}"], np.polyval(trendline, result_df["${params.reference_col}"]), label=col)
-
-
-    # Convert relevant columns to numeric
-    result_df2['PC+dG*(solv)(kcal/mol)'] = pd.to_numeric(result_df2['PC+dG*(solv)(kcal/mol)'], errors='coerce')
-    result_df2['experimentalvalue(kcal/mol)'] = pd.to_numeric(result_df2['experimentalvalue(kcal/mol)'], errors='coerce')
 
     # Plotting
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -181,7 +146,7 @@ process analyze_mobley {
     for (charge_method, solvent), group in result_df2.groupby(['partial_charge_method', 'solvent']):
         marker = markers.get(charge_method, 'o')  # Default to 'o' if charge_method is not found
         sns.regplot(
-            x=group['experimentalvalue(kcal/mol)'],
+            x=group['${params.reference_col}'],
             y=group['PC+dG*(solv)(kcal/mol)'],
             label=f'{charge_method} - {solvent}',
             marker=marker,
@@ -210,7 +175,7 @@ process analyze_mobley {
     # Calculate correlation coefficients
     correlation_coefficients = (
         result_df2.groupby(['partial_charge_method', 'solvent'])
-        .apply(lambda group: group['experimentalvalue(kcal/mol)'].corr(group['PC+dG*(solv)(kcal/mol)']))
+        .apply(lambda group: group['${params.reference_col}'].corr(group['PC+dG*(solv)(kcal/mol)']))
     )
 
     # Combine both into a single DataFrame
