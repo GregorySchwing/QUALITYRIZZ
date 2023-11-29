@@ -479,7 +479,7 @@ process build_solvent_parameters {
     input:
     tuple val(model), val(SMILES), val(FF), val(temperature), val(dieps), val(density)
     output:
-    tuple val(FF), val(temperature), val(dieps), val(density), path("solvent.prmtop"), path("solvent.crd")
+    tuple val(model), val(FF), val(temperature), val(dieps), val(density), path("solvent.prmtop"), path("solvent.crd")
 
     script:
     """
@@ -607,10 +607,10 @@ process minimize_solvent {
 
     debug false
     input:
-    tuple val(model), val(temperature), val(dieps), val(density), path(prm), path(crd)
+    tuple val(model), val(FF), val(temperature), val(dieps), val(density), path(prm), path(crd)
     output:
     path("sander.*"), emit: paths
-    tuple val(model), val(temperature), val(dieps), val(density), path(prm), path("sander.n_min.rst7"), emit: minimized_solvent
+    tuple val(FF), val(temperature), val(dieps), val(density), path(prm), path("sander.n_min.rst7"), emit: minimized_solvent
     maxRetries 20
     script:
     """
@@ -618,7 +618,18 @@ process minimize_solvent {
     print("Hello from ${model} ${temperature} ${prm} ${crd}")
     # Import module
     from biobb_amber.sander.sander_mdrun import sander_mdrun
+    import shutil
 
+    def copy_file(src_path, dest_path):
+        try:
+            shutil.copy(src_path, dest_path)
+            print(f"File copied successfully from {src_path} to {dest_path}")
+        except FileNotFoundError:
+            print(f"Source file {src_path} not found.")
+        except PermissionError:
+            print(f"Permission error. Check if you have the necessary permissions.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
     # Create prop dict and inputs/outputs
     output_n_min_traj_file = 'sander.n_min.x'
     output_n_min_rst_file = 'sander.n_min.rst7'
@@ -638,39 +649,41 @@ process minimize_solvent {
             'ntxo' : 1, # asci formatted rst7
         },
     }
+    if ("${model}"!="WATER"):
+        # Create and launch bb
+        sander_mdrun(input_top_path="${prm}",
+                    input_crd_path="${crd}",
+                    output_traj_path=output_n_min_traj_file,
+                    output_rst_path=output_n_min_rst_file,
+                    output_log_path=output_n_min_log_file,
+                    properties=prop)
 
-    # Create and launch bb
-    sander_mdrun(input_top_path="${prm}",
-                input_crd_path="${crd}",
-                output_traj_path=output_n_min_traj_file,
-                output_rst_path=output_n_min_rst_file,
-                output_log_path=output_n_min_log_file,
-                properties=prop)
+        # Import module
+        from biobb_amber.process.process_minout import process_minout
 
-    # Import module
-    from biobb_amber.process.process_minout import process_minout
+        # Create prop dict and inputs/outputs
+        output_n_min_dat_file = 'sander.n_min.energy.dat'
+        prop = {
+            "terms" : ['ENERGY']
+        }
 
-    # Create prop dict and inputs/outputs
-    output_n_min_dat_file = 'sander.n_min.energy.dat'
-    prop = {
-        "terms" : ['ENERGY']
-    }
+        # Create and launch bb
+        process_minout(input_log_path=output_n_min_log_file,
+                    output_dat_path=output_n_min_dat_file,
+                    properties=prop)
 
-    # Create and launch bb
-    process_minout(input_log_path=output_n_min_log_file,
-                output_dat_path=output_n_min_dat_file,
-                properties=prop)
-
-    from biobb_amber.ambpdb.amber_to_pdb import amber_to_pdb
-    output_n_min_pdb_file = "sander.n_min.pdb"
-    prop = {
-        'remove_tmp': True,
-        'check_extensions' : False,
-    }
-    amber_to_pdb(input_top_path="${prm}",
-                input_crd_path=output_n_min_rst_file,
-                output_pdb_path=output_n_min_pdb_file,
-                properties=prop)
+        from biobb_amber.ambpdb.amber_to_pdb import amber_to_pdb
+        output_n_min_pdb_file = "sander.n_min.pdb"
+        prop = {
+            'remove_tmp': True,
+            'check_extensions' : False,
+        }
+        amber_to_pdb(input_top_path="${prm}",
+                    input_crd_path=output_n_min_rst_file,
+                    output_pdb_path=output_n_min_pdb_file,
+                    properties=prop)
+    else:
+        copy_file("${crd}", output_n_min_rst_file)
     """
 }
 
