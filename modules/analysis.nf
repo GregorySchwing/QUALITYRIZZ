@@ -107,7 +107,7 @@ process analyze_mobley {
     container "${params.container__openff_toolkit}"
     publishDir "${params.output_folder}/${params.database}/results", mode: 'copy', overwrite: true
 
-    debug true
+    debug false
     input:
         path(results)
         path(database)
