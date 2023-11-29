@@ -109,10 +109,9 @@ process analyze_mobley {
 
     debug true
     input:
-        path(ids)
-        path(pathToDatabase)
+        path(results)
+        path(database)
     output:
-        path("*")
     script:
     """
     #!/usr/bin/env python
@@ -121,67 +120,14 @@ process analyze_mobley {
     import matplotlib.pyplot as plt
     import numpy as np
     from scipy.stats import pearsonr  # Import the pearsonr function
-
-    # Assuming the path to the database is specified
-    path_to_database = "${pathToDatabase}"
-    json_data_list = []
-    # Assuming the list of file paths is provided
-    file_ids = "${pathToDatabase}".split(" ")
-    for file_path in file_ids:
-        # Read JSON file
-        with open(file_path, 'r') as json_file:
-            json_data = json.load(json_file)
-            json_data_list.append(json_data)
-
-    print(json_data_list)
-    # Create an empty DataFrame
-    database = pd.DataFrame()
-
-    # Loop through each dictionary in the list
-    for data_dict in json_data_list:
-        # Extract the key (index) and value (column data)
-        index, column_data = next(iter(data_dict.items()))
-
-        # Create a DataFrame from the column data with the index as the first column
-        temp_df = pd.DataFrame(column_data, index=[index])
-
-        # Append the temporary DataFrame to the main DataFrame
-        database = pd.concat([database, temp_df])
-
-    database = database.rename_axis('molecule')
-    # Drop the 'SMILES' column
-    database = database.drop('SMILES', axis=1)
-
-    print(database)
-    result_df = database
-    result_df2 = pd.DataFrame()
-    # Assuming the list of file paths is provided
-    file_ids = "${ids}".split(" ")
-
-    # Open and read the JSON files
-    for file_id in file_ids:
-        with open(file_id, "r") as file:
-            data = json.load(file)
-
-        # Extract relevant information
-        molecule = data["molecule"]
-        solvent = data["solvent"]
-        partial_charge_method = data["partial_charge_method"]
-        if (solvent == 'tip3p_fb-1.1.1.offxml'):
-            solvent = 'tip3p-fb-1.1.1.offxml'
-        pc_dg_solv = data["PC+dG*(solv)(kcal/mol)"]
-        expt_solv = result_df.at[molecule, '${params.reference_col}']
-        # Append the data to the result DataFrame
-        # result_df = pd.concat([result_df, pd.DataFrame({"molecule": [molecule], "PC+dG*(solv)(kcal/mol)": [pc_dg_solv], "expt (solv)(kcal/mol)": [expt_solv]})], ignore_index=True)
-        #result_df.at[molecule, solvent] = pc_dg_solv
-        result_df2 = pd.concat([result_df2, pd.DataFrame({"molecule": [molecule], "solvent":[solvent], "partial_charge_method":[partial_charge_method], "PC+dG*(solv)(kcal/mol)": [pc_dg_solv], "${params.reference_col}": [float(expt_solv)]})], ignore_index=True)
-
-    print(result_df2.to_string())
-    # Save the result DataFrame to a CSV file
-    result_df2 = result_df2.dropna()
-    # Convert all columns to numeric
-    #result_df2 = result_df2.apply(pd.to_numeric, errors='coerce')
-
+    #${params.reference_col}
+    # Read the CSV file into a DataFrame
+    df_database = pd.read_csv("${database}")
+    print(df_database.head())
+    # Read the CSV file into a DataFrame
+    df_results = pd.read_csv("${results}")
+    print(df_results.head())
+    quit()
     normalize = False
     if (normalize):
         result_df2 = (result_df2 - result_df2.min()) / (result_df2.max() - result_df2.min())

@@ -104,19 +104,7 @@ log.info """\
         temperatures = ["298.15"]
         partial_charge_method = ["gasteiger","am1bcc","am1-mulliken","RESP"]
         partial_charge_method = ["RESP"]
-        input = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: 1).map { 
-            row -> [row."${params.id_col}", row."${params.structure_col}", row."${params.reference_col}"]
-        }
-
-        input_dict2 = Channel.fromPath(params.database_path)
-            .splitCsv(header: true, limit: params.solute_samples)
-            .flatMap { row ->
-                def tumor_reads =  '{' + "\"${params.reference_col}\"" + ': ' + "\"${row."${params.reference_col}"}\"" + ', ' +  
-                                        "\"${params.structure_col}\"" + ': ' + "\"${row."${params.structure_col}"}\"" + '}'
-                ['{' + "\"${row."${params.id_col}"}\"" + ': ' + tumor_reads  + '}']
-            }
-
-        soluteListChannel = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: params.solute_samples).map { 
+        soluteListChannel = Channel.fromPath( params.database_path ).splitCsv(header: true,limit: params.solute_samples,quote:'"').map { 
             row -> [row."${params.id_col}", row."${params.structure_col}", row."${params.reference_col}"]
         }
         //soluteListChannel.view()
@@ -132,9 +120,9 @@ log.info """\
             | combine(build_solvents.out.solvent) 
             | minimize_ligands
             | rism_solvation
-            | collectFile(name:'results.csv', newLine:true, storeDir:"${params.output_folder}"+File.separator+"${params.database}"){ item ->
-                [ "results.csv", item[0]+','+item[1]+','+item[2]+','+item[3]+','+item[4] ]
-            }
+            | collectFile(name:'results.csv', newLine:false, keepHeader:true, storeDir:"${params.output_folder}"+File.separator+"${params.database}"){ item ->
+                [ "results.csv", "molecule,elec_meth,solvent,temp,chempot\n"+item[0]+','+item[1]+','+item[2]+','+item[3]+','+item[4]+"\n" ]
+            } 
         return
         analyze_list(results,soluteListChannel.collect())
     } else {
