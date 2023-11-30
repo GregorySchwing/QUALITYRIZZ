@@ -218,7 +218,11 @@ process run_solvation_script {
     tuple path(bash_script), path("rism.out"), emit: files
     shell:
     """
+    # Turn off exit-on-error temporarily
+    set +e
     source !{bash_script}
+    # Revert to the default behavior (exit on error)
+    set -e
     cat rism.out
     chemical_potential=\$(awk '/^rism_excessChemicalPotentialPCPLUS/ {print \$2}' rism.out)
     if [ -z "\$chemical_potential" ]; then
