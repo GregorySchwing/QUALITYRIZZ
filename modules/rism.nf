@@ -209,6 +209,7 @@ process run_solvation_script {
     publishDir "${params.output_folder}/${params.database}/3DRISM/${molecule}_${partial_charge_method}_${model}_${temperature}", mode: 'copy', overwrite: false
 
     debug false
+    errorStrategy 'ignore'
     input:
     tuple val(molecule), path(prm), path(crd), val(partial_charge_method), val(model), val(temperature), path(xvv), path(pdb), path(rst)
     path(bash_script)
@@ -220,6 +221,9 @@ process run_solvation_script {
     source !{bash_script}
     cat rism.out
     chemical_potential=\$(awk '/^rism_excessChemicalPotentialPCPLUS/ {print \$2}' rism.out)
+    if [ -z "\$chemical_potential" ]; then
+        chemical_potential="NA"
+    fi
     """
 }
 
